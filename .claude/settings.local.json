@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where npm)",
+      "Bash(npm install)",
+      "Bash(where npx)",
+      "Bash(where node)",
+      "Bash(node -e \"console.log\\(require\\(''next/package.json''\\).version\\)\")",
+      "Bash(python scripts/verify_keys.py)",
+      "Bash(pip install -r requirements.txt)",
+      "Bash(python -c \"import pandas, numpy, pytz, dotenv, requests; print\\(''All core deps OK''\\)\")",
+      "Bash(python -c \"import yfinance; print\\(''yfinance OK''\\)\")",
+      "Bash(python -m src.main)",
+      "Bash(npm run build)"
+    ]
+  }
+}

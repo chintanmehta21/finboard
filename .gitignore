@@ -1,0 +1,42 @@
+# Admin folder (local only — API keys, execution plan, private docs)
+Admin/
+
+# Token cache (sensitive)
+.token_cache/
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Environment
+.env
+.env.local
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dashboard
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+
+# NOTE: dashboard/public/data/signals.json is NOT gitignored.
+# It is tracked in git so Vercel can deploy the dashboard with data.
+# GitHub Actions updates it daily and commits the change.

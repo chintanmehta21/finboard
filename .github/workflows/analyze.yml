@@ -1,0 +1,115 @@
+name: NSE Alpha System — Daily Analysis
+
+on:
+  schedule:
+    # 03:30 UTC = 9:00 AM IST — before market open (9:15 AM IST)
+    # Analyzes previous trading day's data so signals are ready at market open.
+    # India does not observe DST, so UTC+5:30 is fixed year-round.
+    - cron: '30 3 * * 1-5'
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25  # Safety cap
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Set cache date key (refreshes daily)
+        run: echo "CACHE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Restore Fyers token cache
+        uses: actions/cache@v4
+        id: token-cache
+        with:
+          path: .token_cache/
+          key: fyers-tokens-${{ env.CACHE_DATE }}
+          restore-keys: fyers-tokens-
+
+      - name: Run full analysis pipeline
+        env:
+          FYERS_APP_ID:    ${{ secrets.FYERS_APP_ID }}
+          FYERS_SECRET:    ${{ secrets.FYERS_SECRET_KEY }}
+          FYERS_CLIENT_ID: ${{ secrets.FYERS_CLIENT_ID }}
+          FYERS_PIN:       ${{ secrets.FYERS_PIN }}
+          FYERS_TOTP_KEY:  ${{ secrets.FYERS_TOTP_KEY }}
+          TELEGRAM_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python -m src.main
+
+      - name: Save token cache for next run
+        uses: actions/cache@v4
+        with:
+          path: .token_cache/
+          key: fyers-tokens-${{ env.CACHE_DATE }}
+
+      - name: Commit updated dashboard data
+        run: |
+          git config user.name "NSE Alpha Bot"
+          git config user.email "bot@nse-alpha.local"
+          git add dashboard/public/data/signals.json || true
+          git diff --staged --quiet || git commit -m "chore: update daily signals $(date +'%Y-%m-%d')"
+          git push || true
+
+      - name: Upload run log as artifact (7-day retention)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-log-${{ env.CACHE_DATE }}
+          path: logs/
+          retention-days: 7
+
+      - name: Notify on failure via Telegram
+        if: failure()
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT:  ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python -c "
+          import requests, os
+          token = os.environ.get('TELEGRAM_TOKEN', '')
+          chat = os.environ.get('TELEGRAM_CHAT', '')
+          if token and chat:
+              msg = '⚠️ <b>NSE Alpha System — PIPELINE FAILED</b>\n\n'
+              msg += 'The daily analysis workflow failed.\n'
+              msg += 'Check GitHub Actions logs for details.\n'
+              msg += f'Run: $(date +\"%Y-%m-%d %H:%M UTC\")'
+              try:
+                  requests.post(
+                      f'https://api.telegram.org/bot{token}/sendMessage',
+                      json={'chat_id': chat, 'text': msg, 'parse_mode': 'HTML'},
+                      timeout=10
+                  )
+              except Exception:
+                  pass
+          "
+
+      - name: Notify on failure via Discord
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python -c "
+          import requests, os
+          webhook = os.environ.get('DISCORD_WEBHOOK_URL', '')
+          if webhook:
+              msg = '⚠️ **NSE Alpha System — PIPELINE FAILED**\n\n'
+              msg += 'The daily analysis workflow failed.\n'
+              msg += 'Check GitHub Actions logs for details.'
+              try:
+                  requests.post(webhook, json={'content': msg}, timeout=10)
+              except Exception:
+                  pass
+          "

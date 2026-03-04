@@ -1,0 +1,184 @@
+"""
+Stage 1A — Forensic Universe Filter
+
+Implements the Beneish M-Score (simplified 5-ratio version) and Cash Conversion Ratio
+to identify and exclude governance landmines before any technical analysis.
+
+Rules (HARD EXCLUDE, no exceptions):
+- M-Score > -2.22 -> probable earnings manipulator
+- CFO/EBITDA < 0.80 -> cash not backing reported profits
+- Promoter pledge > 5% OR pledge delta > +2pp in last quarter
+"""
+
+import logging
+
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+# M-Score threshold: above this = probable manipulator
+M_SCORE_THRESHOLD = -2.22
+
+# Cash Conversion Ratio minimum: profits must convert to real cash
+CCR_THRESHOLD = 0.80
+
+# Promoter pledge thresholds
+PLEDGE_MAX_PCT = 5.0
+PLEDGE_MAX_DELTA = 2.0  # percentage points per quarter
+
+
+def beneish_m_score(f: dict) -> float:
+    """
+    Compute simplified Beneish M-Score using 5 key ratios.
+
+    The M-Score estimates probability of earnings manipulation.
+    Original model uses 8 variables; we use 5 that are reliably available
+    via yfinance for Indian equities.
+
+    Args:
+        f: Fundamentals dict from fundamentals.py
+
+    Returns:
+        M-Score value. Higher (less negative) = higher manipulation probability.
+        Threshold: > -2.22 indicates probable manipulation.
+    """
+    if not f:
+        return 0.0  # Missing data: fail-safe (will be excluded)
+
+    eps = 1e-9  # Epsilon to prevent division by zero
+
+    # DSRI: Days Sales in Receivables Index
+    # Detects channel stuffing / aggressive revenue recognition
+    recv_t = f.get('receivables_t', 0) or 0
+    recv_t1 = f.get('receivables_t1', 0) or 0
+    sales_t = f.get('sales_t', 0) or eps
+    sales_t1 = f.get('sales_t1', 0) or eps
+    dsri = (recv_t / sales_t) / (recv_t1 / sales_t1 + eps)
+
+    # AQI: Asset Quality Index
+    # Detects capitalising opex — common in Indian mid-caps
+    ca_t = f.get('current_assets_t', 0) or 0
+    ppe_t = f.get('ppe_t', 0) or 0
+    ta_t = f.get('total_assets', 0) or eps
+    ca_t1 = f.get('current_assets_t1', 0) or 0
+    ppe_t1 = f.get('ppe_t1', 0) or 0
+    aqi_t = 1 - (ca_t + ppe_t) / ta_t if ta_t > eps else 0
+    aqi_t1 = 1 - (ca_t1 + ppe_t1) / ta_t if ta_t > eps else eps
+    aqi = aqi_t / (aqi_t1 + eps)
+
+    # TATA: Total Accruals to Total Assets
+    # Accrual gap: accounting profit vs real cash
+    net_income = f.get('net_income', 0) or 0
+    cfo = f.get('cfo', 0) or 0
+    tata = (net_income - cfo) / (ta_t + eps)
+
+    # LVGI: Leverage Index
+    # Sudden leverage spikes before downgrades
+    debt_t = f.get('debt_t', 0) or 0
+    debt_t1 = f.get('debt_t1', 0) or 0
+    lvgi_t = debt_t / (ta_t + eps)
+    lvgi_t1 = debt_t1 / (ta_t + eps)
+    lvgi = lvgi_t / (lvgi_t1 + eps) if lvgi_t1 > eps else 1.0
+
+    # SGI: Sales Growth Index
+    # Unsustainable hyper-growth precursor
+    sgi = sales_t / (sales_t1 + eps)
+
+    # Beneish M-Score formula (5-variable version)
+    m_score = (
+        -4.84
+        + 0.920 * dsri
+        + 0.528 * tata
+        + 0.404 * lvgi
+        + 0.892 * sgi
+        + 0.115 * aqi
+    )
+
+    return m_score
+
+
+def cash_conversion_ratio(f: dict) -> float:
+    """
+    Compute Cash Conversion Ratio = CFO / EBITDA.
+
+    Companies reporting high EPS growth but failing to convert it into
+    operating cash flow are classic 'momentum crash' candidates.
+
+    Args:
+        f: Fundamentals dict
+
+    Returns:
+        CCR value. Must be >= 0.80 to pass.
+    """
+    if not f:
+        return 0.0
+
+    cfo = f.get('cfo', 0) or 0
+    ebitda = f.get('ebitda', 0) or 1e-9
+
+    if ebitda <= 0:
+        return 0.0  # Negative EBITDA: exclude
+
+    return cfo / ebitda
+
+
+def forensic_pass(f: dict, pledge_data: dict = None) -> bool:
+    """
+    Run all Stage 1A forensic checks.
+
+    Returns True only if the stock passes ALL forensic gates.
+    """
+    if not f:
+        return False  # Missing fundamentals = excluded (conservative fail-safe)
+
+    # Check 1: Beneish M-Score
+    m_score = beneish_m_score(f)
+    if m_score > M_SCORE_THRESHOLD:
+        return False
+
+    # Check 2: Cash Conversion Ratio
+    ccr = cash_conversion_ratio(f)
+    if ccr < CCR_THRESHOLD:
+        return False
+
+    # Check 3: Promoter pledging
+    if pledge_data and pledge_data.get('data_available'):
+        if pledge_data['pledge_pct'] > PLEDGE_MAX_PCT:
+            return False
+        if pledge_data['pledge_delta_1q'] > PLEDGE_MAX_DELTA:
+            return False
+
+    return True
+
+
+def forensic_quality_score(f: dict) -> float:
+    """
+    Compute a continuous forensic quality score (0-1) for Stage 2 factor ranking.
+
+    This is NOT a gate — it's used as Factor 4 in the multi-factor composite.
+    Higher = better quality/less manipulation risk.
+
+    Composite: 50% CCR rank + 30% inverse M-Score rank + 20% inverse LVGI trend
+    """
+    if not f:
+        return 0.0
+
+    ccr = cash_conversion_ratio(f)
+    m_score = beneish_m_score(f)
+
+    # LVGI trend: lower is better (less leverage increase)
+    debt_t = f.get('debt_t', 0) or 0
+    debt_t1 = f.get('debt_t1', 0) or 0
+    ta = f.get('total_assets', 0) or 1e-9
+    lvgi = (debt_t / ta) / (debt_t1 / ta + 1e-9) if debt_t1 > 0 else 1.0
+
+    # Normalize components to 0-1 range (will be percentile-ranked in pipeline)
+    # Raw scores — higher = better quality
+    ccr_score = min(max(ccr, 0), 2)  # Clip to [0, 2]
+    m_score_inv = min(max(-m_score, 0), 10)  # More negative M-Score = better
+    lvgi_inv = min(max(2 - lvgi, 0), 2)  # Lower LVGI = better
+
+    # Weighted composite (raw, will be percentile-ranked in pipeline)
+    composite = 0.5 * ccr_score + 0.3 * m_score_inv + 0.2 * lvgi_inv
+
+    return composite

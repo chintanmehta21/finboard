@@ -1,0 +1,158 @@
+{
+  "generated_at": "2026-03-05T04:22:08.385008+05:30",
+  "date": "2026-03-05",
+  "display_date": "Thursday, 05 Mar 2026",
+  "sample_mode": true,
+  "regime": {
+    "name": "BEAR",
+    "scalar": 0.0,
+    "exposure_pct": 0
+  },
+  "macro": {
+    "nifty_close": 22409.8,
+    "nifty_200dma": 23303.02,
+    "nifty_dma_pct": -3.8,
+    "india_vix": 21.1,
+    "usdinr": 92.08,
+    "usdinr_30d_move": 0.6,
+    "fii_net": -1814.0,
+    "dii_net": 3705.0
+  },
+  "pipeline_stats": {
+    "total_universe": 51,
+    "stage_1a_pass": 0,
+    "stage_1b_pass": 0,
+    "stage_1c_pass": 0,
+    "stage_2_scored": 0,
+    "date": "2026-03-05",
+    "regime": "BEAR",
+    "vix": 21.1,
+    "high_vix_mode": true
+  },
+  "factor_weights": {
+    "rs": 0.0,
+    "del": 0.0,
+    "vam": 0.0,
+    "for": 0.0,
+    "rev": 0.0
+  },
+  "bullish": [
+    {
+      "symbol": "INFY",
+      "close": 1307.4,
+      "sector": "IT",
+      "ccr": 3.47,
+      "debt_equity": 0.11,
+      "return_3m": -17.2,
+      "defensive_score": 173.4
+    },
+    {
+      "symbol": "TCS",
+      "close": 2587.8,
+      "sector": "IT",
+      "ccr": 3.3,
+      "debt_equity": 0.1,
+      "return_3m": -17.1,
+      "defensive_score": 164.8
+    },
+    {
+      "symbol": "WIPRO",
+      "close": 195.55,
+      "sector": "IT",
+      "ccr": 3.03,
+      "debt_equity": 0.22,
+      "return_3m": -21.2,
+      "defensive_score": 151.3
+    },
+    {
+      "symbol": "DRREDDY",
+      "close": 1291.2,
+      "sector": "Pharma",
+      "ccr": 2.92,
+      "debt_equity": 0.18,
+      "return_3m": 0.8,
+      "defensive_score": 147.0
+    },
+    {
+      "symbol": "LTIM",
+      "close": 4404.4,
+      "sector": "IT",
+      "ccr": 2.72,
+      "debt_equity": 0.1,
+      "return_3m": -28.5,
+      "defensive_score": 136.0
+    }
+  ],
+  "bearish": [
+    {
+      "symbol": "HCLTECH",
+      "bearish_score": 0,
+      "close": 1364.0,
+      "sector": "IT",
+      "m_score": 0,
+      "ccr": 0.04,
+      "mansfield_rs": 0.0,
+      "lvgi": 1.0,
+      "lvgi_rising": false,
+      "neg_revision": false,
+      "revision_proxy": 1.389,
+      "signal": "CAUTION"
+    },
+    {
+      "symbol": "TECHM",
+      "bearish_score": 0,
+      "close": 1351.2,
+      "sector": "IT",
+      "m_score": 0,
+      "ccr": 0.0,
+      "mansfield_rs": 0.0,
+      "lvgi": 1.0,
+      "lvgi_rising": false,
+      "neg_revision": false,
+      "revision_proxy": 1.333,
+      "signal": "CAUTION"
+    },
+    {
+      "symbol": "SBIN",
+      "bearish_score": 0,
+      "close": 1174.5,
+      "sector": "Banking",
+      "m_score": 0,
+      "ccr": 0.0,
+      "mansfield_rs": 0.0,
+      "lvgi": 1.0,
+      "lvgi_rising": false,
+      "neg_revision": false,
+      "revision_proxy": 2.333,
+      "signal": "CAUTION"
+    },
+    {
+      "symbol": "KOTAKBANK",
+      "bearish_score": 0,
+      "close": 403.35,
+      "sector": "Banking",
+      "m_score": 0,
+      "ccr": 0.0,
+      "mansfield_rs": 0.0,
+      "lvgi": 1.0,
+      "lvgi_rising": false,
+      "neg_revision": false,
+      "revision_proxy": 1.325,
+      "signal": "CAUTION"
+    },
+    {
+      "symbol": "RELIANCE",
+      "bearish_score": 0,
+      "close": 1345.0,
+      "sector": "Energy",
+      "m_score": 0,
+      "ccr": 0.0,
+      "mansfield_rs": 0.0,
+      "lvgi": 1.0,
+      "lvgi_rising": false,
+      "neg_revision": false,
+      "revision_proxy": 1.035,
+      "signal": "CAUTION"
+    }
+  ]
+}
