@@ -1,6 +1,5 @@
 {
-  "buildCommand": "cd dashboard && npm install && npm run build",
-  "outputDirectory": "dashboard/out",
-  "framework": "nextjs",
-  "installCommand": "echo 'skip root install'"
+  "installCommand": "cd dashboard && npm install",
+  "buildCommand": "cd dashboard && npm run build",
+  "outputDirectory": "dashboard/out"
 }
