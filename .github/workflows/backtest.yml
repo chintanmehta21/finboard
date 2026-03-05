@@ -1,4 +1,4 @@
-name: NSE Alpha System — Weekly Backtest
+name: Finboard — Weekly Backtest
 
 on:
   schedule:
@@ -56,8 +56,8 @@ jobs:
 
       - name: Commit backtest results
         run: |
-          git config user.name "NSE Alpha Bot"
-          git config user.email "bot@nse-alpha.local"
+          git config user.name "Finboard Bot"
+          git config user.email "bot@finboard.local"
           git add Tests/backtest/backtest_results/*.csv || true
           git diff --staged --quiet || git commit -m "chore: weekly backtest results $(date +'%Y-%m-%d')"
           git push || true
@@ -89,7 +89,7 @@ jobs:
           token = os.environ.get('TELEGRAM_TOKEN', '')
           chat = os.environ.get('TELEGRAM_CHAT', '')
           if token and chat:
-              msg = '⚠️ <b>NSE Alpha System — BACKTEST FAILED</b>\n\n'
+              msg = '⚠️ <b>Finboard — BACKTEST FAILED</b>\n\n'
               msg += 'The weekly backtest workflow failed.\n'
               msg += 'Check GitHub Actions logs for details.'
               try:
@@ -111,7 +111,7 @@ jobs:
           import requests, os
           webhook = os.environ.get('DISCORD_WEBHOOK_URL', '')
           if webhook:
-              msg = '⚠️ **NSE Alpha System — BACKTEST FAILED**\n\n'
+              msg = '⚠️ **Finboard — BACKTEST FAILED**\n\n'
               msg += 'The weekly backtest workflow failed.\n'
               msg += 'Check GitHub Actions logs for details.'
               try:

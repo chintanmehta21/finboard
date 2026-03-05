@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.utils.key_loader import get_all_keys
 
-print("\n=== NSE Alpha System — Key Verification ===\n")
+print("\n=== Finboard — Key Verification ===\n")
 
 keys = get_all_keys()
 all_ready = True

@@ -110,11 +110,15 @@ def bearish_candidates(ohlcv_data: dict[str, pd.DataFrame],
         bearish_score = min(bearish_score, 100)
 
         close = ohlcv['close'].iloc[-1] if not ohlcv.empty else 0
+        ret_1w = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-5] - 1) * 100 if len(ohlcv) >= 5 else 0
+        ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) * 100 if len(ohlcv) >= 63 else 0
 
         records.append({
             'symbol': symbol,
             'bearish_score': round(bearish_score, 1),
             'close': round(close, 2),
+            'return_1w': round(ret_1w, 1),
+            'return_3m': round(ret_3m, 1),
             'sector': (sector_map or {}).get(symbol, ''),
             'm_score': round(m_score, 2),
             'ccr': round(ccr, 2),
@@ -169,8 +173,9 @@ def defensive_rotation_candidates(ohlcv_data: dict[str, pd.DataFrame],
             continue
 
         close = ohlcv['close'].iloc[-1] if not ohlcv.empty else 0
-        # Simple momentum: 3-month return
+        # Simple momentum: 3-month and 1-week returns
         ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) if len(ohlcv) >= 63 else 0
+        ret_1w = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-5] - 1) if len(ohlcv) >= 5 else 0
 
         records.append({
             'symbol': symbol,
@@ -179,6 +184,7 @@ def defensive_rotation_candidates(ohlcv_data: dict[str, pd.DataFrame],
             'ccr': round(ccr, 2),
             'debt_equity': round(de, 2),
             'return_3m': round(ret_3m * 100, 1),
+            'return_1w': round(ret_1w * 100, 1),
             'defensive_score': round(ccr * 50 + max(ret_3m * 100, 0), 1),
         })
 

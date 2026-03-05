@@ -18,6 +18,55 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 8
 BATCH_DELAY = 1.0  # seconds between batches
 
+# Fyers API limits daily resolution to max 365 days per request
+MAX_DAILY_RANGE = 365
+
+
+def _fetch_history_chunked(fyers: fyersModel.FyersModel, symbol: str,
+                           start: date, end: date) -> pd.DataFrame | None:
+    """
+    Fetch daily OHLCV history in ≤365-day chunks to respect Fyers API limits.
+
+    Splits date range into multiple requests if needed, concatenates results.
+    """
+    chunks = []
+    chunk_start = start
+
+    while chunk_start < end:
+        chunk_end = min(chunk_start + timedelta(days=MAX_DAILY_RANGE), end)
+
+        resp = fyers.history({
+            'symbol': symbol,
+            'resolution': 'D',
+            'date_format': '1',
+            'range_from': chunk_start.strftime('%Y-%m-%d'),
+            'range_to': chunk_end.strftime('%Y-%m-%d'),
+            'cont_flag': '1'
+        })
+
+        if resp.get('s') == 'ok' and resp.get('candles'):
+            df = pd.DataFrame(
+                resp['candles'],
+                columns=['ts', 'open', 'high', 'low', 'close', 'volume']
+            )
+            df['date'] = pd.to_datetime(df['ts'], unit='s').dt.date
+            df = df.set_index('date').drop(columns=['ts'])
+            chunks.append(df)
+
+        chunk_start = chunk_end + timedelta(days=1)
+
+        # Brief pause between chunk requests
+        if chunk_start < end:
+            time.sleep(0.3)
+
+    if not chunks:
+        return None
+
+    combined = pd.concat(chunks)
+    # Remove any duplicate dates from overlapping chunks
+    combined = combined[~combined.index.duplicated(keep='last')]
+    return combined.sort_index()
+
 
 def fetch_all_ohlcv(fyers: fyersModel.FyersModel, symbols: list[str],
                     years: int = 2) -> dict[str, pd.DataFrame]:
@@ -33,36 +82,22 @@ def fetch_all_ohlcv(fyers: fyersModel.FyersModel, symbols: list[str],
         Dict mapping symbol -> DataFrame with columns [open, high, low, close, volume]
         indexed by date
     """
-    end_date = date.today().strftime('%Y-%m-%d')
-    start_date = (date.today() - timedelta(days=365 * years)).strftime('%Y-%m-%d')
+    end = date.today()
+    start = end - timedelta(days=365 * years)
 
     results = {}
     failed = []
 
-    logger.info(f"Fetching OHLCV for {len(symbols)} symbols ({start_date} to {end_date})")
+    logger.info(f"Fetching OHLCV for {len(symbols)} symbols ({start} to {end})")
 
     for i, symbol in enumerate(symbols):
         try:
-            resp = fyers.history({
-                'symbol': f'NSE:{symbol}-EQ',
-                'resolution': 'D',
-                'date_format': '1',
-                'range_from': start_date,
-                'range_to': end_date,
-                'cont_flag': '1'
-            })
-
-            if resp.get('s') == 'ok' and resp.get('candles'):
-                df = pd.DataFrame(
-                    resp['candles'],
-                    columns=['ts', 'open', 'high', 'low', 'close', 'volume']
-                )
-                df['date'] = pd.to_datetime(df['ts'], unit='s').dt.date
-                df = df.set_index('date').drop(columns=['ts'])
+            df = _fetch_history_chunked(fyers, f'NSE:{symbol}-EQ', start, end)
+            if df is not None and not df.empty:
                 results[symbol] = df
             else:
                 failed.append(symbol)
-                logger.debug(f"No data for {symbol}: {resp.get('message', 'unknown')}")
+                logger.debug(f"No data for {symbol}")
 
         except Exception as e:
             failed.append(symbol)
@@ -88,50 +123,76 @@ def fetch_index_data(fyers: fyersModel.FyersModel,
     """
     Fetch Nifty 500, India VIX, and USD/INR daily data for regime detection.
 
+    USD/INR is fetched from yfinance (primary, most reliable) with Fyers fallback.
+    Nifty 500 and VIX are fetched from Fyers.
+
     Returns:
         Dict with keys 'nifty_df', 'vix_df', 'usdinr_df' -> DataFrames
     """
-    end_date = date.today().strftime('%Y-%m-%d')
-    start_date = (date.today() - timedelta(days=365 * years)).strftime('%Y-%m-%d')
+    end = date.today()
+    start = end - timedelta(days=365 * years)
 
-    index_symbols = {
+    # Fetch Nifty 500 and VIX from Fyers
+    fyers_indices = {
         'nifty_df': 'NSE:NIFTY500-INDEX',
         'vix_df': 'NSE:INDIAVIX-INDEX',
-        'usdinr_df': 'NSE:USDINR-INDEX',
     }
 
     results = {}
 
-    for key, fyers_symbol in index_symbols.items():
+    for key, fyers_symbol in fyers_indices.items():
         try:
-            resp = fyers.history({
-                'symbol': fyers_symbol,
-                'resolution': 'D',
-                'date_format': '1',
-                'range_from': start_date,
-                'range_to': end_date,
-                'cont_flag': '1'
-            })
-
-            if resp.get('s') == 'ok' and resp.get('candles'):
-                df = pd.DataFrame(
-                    resp['candles'],
-                    columns=['ts', 'open', 'high', 'low', 'close', 'volume']
-                )
-                df['date'] = pd.to_datetime(df['ts'], unit='s').dt.date
-                results[key] = df.set_index('date').drop(columns=['ts'])
+            df = _fetch_history_chunked(fyers, fyers_symbol, start, end)
+            if df is not None and not df.empty:
+                results[key] = df
                 logger.info(f"Fetched {key}: {len(df)} candles")
             else:
-                logger.warning(f"No data for {key} ({fyers_symbol}): {resp.get('message')}")
+                logger.warning(f"No data for {key} ({fyers_symbol})")
                 results[key] = pd.DataFrame()
-
         except Exception as e:
             logger.error(f"Failed to fetch {key} ({fyers_symbol}): {e}")
             results[key] = pd.DataFrame()
 
-        time.sleep(0.5)  # Brief pause between index fetches
+        time.sleep(0.5)
+
+    # USD/INR: yfinance is primary (most reliable), Fyers is fallback
+    results['usdinr_df'] = _fetch_usdinr_yfinance(start, end)
+    if results['usdinr_df'].empty:
+        logger.info("USDINR: yfinance returned no data, trying Fyers...")
+        try:
+            df = _fetch_history_chunked(fyers, 'NSE:USDINR-INDEX', start, end)
+            if df is not None and not df.empty:
+                results['usdinr_df'] = df
+                logger.info(f"USDINR fetched via Fyers: {len(df)} candles")
+        except Exception as e:
+            logger.warning(f"USDINR Fyers fallback failed: {e}")
 
     return results
+
+
+def _fetch_usdinr_yfinance(start: date, end: date) -> pd.DataFrame:
+    """Fetch USD/INR from yfinance (primary source for currency data)."""
+    try:
+        import yfinance as yf
+        logger.info("USDINR: fetching from yfinance USDINR=X (primary)...")
+        ticker = yf.Ticker('USDINR=X')
+        df = ticker.history(start=start.strftime('%Y-%m-%d'),
+                            end=end.strftime('%Y-%m-%d'), interval='1d')
+        if df is not None and not df.empty:
+            df = df.rename(columns={
+                'Open': 'open', 'High': 'high', 'Low': 'low',
+                'Close': 'close', 'Volume': 'volume'
+            })
+            df.index = df.index.date
+            df.index.name = 'date'
+            df = df[['open', 'high', 'low', 'close', 'volume']]
+            logger.info(f"USDINR fetched via yfinance: {len(df)} candles, latest={df['close'].iloc[-1]:.2f}")
+            return df
+        logger.warning("USDINR yfinance returned no data")
+    except Exception as e:
+        logger.warning(f"USDINR yfinance fetch failed: {e}")
+
+    return pd.DataFrame()
 
 
 def fetch_quotes_batch(fyers: fyersModel.FyersModel,

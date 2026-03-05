@@ -1,5 +1,5 @@
 """
-NSE Alpha System — Walk-Forward Backtesting Engine
+Finboard — Walk-Forward Backtesting Engine
 
 Entry point for the weekly backtest. Simulates the 5-stage pipeline
 running on each historical Friday over a configurable lookback period.
@@ -58,7 +58,7 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description='NSE Alpha System — Walk-Forward Backtest'
+        description='Finboard — Walk-Forward Backtest'
     )
     parser.add_argument(
         '--weeks', type=int, default=52,
@@ -83,7 +83,7 @@ def main():
     now = datetime.now(IST)
 
     logger.info(f"{'=' * 65}")
-    logger.info(f"  NSE Alpha System — WALK-FORWARD BACKTEST")
+    logger.info(f"  Finboard — WALK-FORWARD BACKTEST")
     logger.info(f"  Date: {now.strftime('%A, %d %b %Y %I:%M %p IST')}")
     logger.info(f"  Lookback: {args.weeks} weeks | Capital: INR {args.capital:,.0f}")
     logger.info(f"  Bhavcopy: {'enabled' if not args.no_bhavcopy else 'disabled'}")

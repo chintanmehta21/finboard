@@ -1,5 +1,8 @@
 # Admin folder (local only — API keys, execution plan, private docs)
 Admin/
+# Exception: System Snapshots are documentation, safe to track
+!Admin/System_Snapshots/
+!Admin/System_Snapshots/**
 
 # Token cache (sensitive)
 .token_cache/

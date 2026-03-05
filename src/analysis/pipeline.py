@@ -8,7 +8,8 @@ Stage 1C: Point-in-Time Earnings Gate (QoQ Sales > 0%, 2Q EPS > 10%)
 Stage 2:  Multi-Factor Ranking (5 factors, regime-weighted)
 Stage 3:  Macro & Regime Overlay (exposure scalar + VIX-adaptive stops)
 
-In BEAR regime, bullish list is replaced by defensive rotation candidates.
+In BEAR regime, bullish list uses defensive rotation candidates (low-debt,
+high-quality stocks from defensive sectors like FMCG, Pharma, IT).
 
 Output: Two ranked lists — bullish candidates and bearish candidates —
 with confidence scores, price targets, and supporting metrics.
@@ -98,6 +99,19 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
             benchmark_df=regime_data.get('nifty_df', pd.DataFrame()),
             sector_map=sector_map
         )
+
+        # Enrich defensive candidates with target, stop_loss, atr14
+        if isinstance(defensive, pd.DataFrame) and not defensive.empty:
+            for idx, row in defensive.iterrows():
+                symbol = row['symbol']
+                ohlcv = ohlcv_data.get(symbol, pd.DataFrame())
+                if not ohlcv.empty:
+                    atr14 = compute_atr14(ohlcv)
+                    targets = compute_price_targets(symbol, ohlcv, atr14)
+                    defensive.loc[idx, 'atr14'] = round(atr14, 2)
+                    defensive.loc[idx, 'target_high'] = targets.get('target_high', 0)
+                    defensive.loc[idx, 'stop_loss'] = targets.get('stop_loss', 0)
+
         fii_data = _extract_fii_data(regime_data)
         macro = get_macro_snapshot(
             regime_data.get('nifty_df', pd.DataFrame()),
@@ -107,7 +121,7 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
         )
         logger.info(f"BEAR pipeline: {len(defensive)} defensive, {len(bear_candidates)} bearish")
         return {
-            'bullish': defensive,          # Defensive stocks replace bullish in BEAR
+            'bullish': defensive,          # In BEAR: defensive-sector stocks shown as bullish
             'bearish': bear_candidates,
             'defensive': defensive,
             'regime_name': regime_name,
@@ -172,9 +186,15 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
 
         close = float(ohlcv['close'].iloc[-1])
 
+        # Returns: 1-week and 3-month
+        ret_1w = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-5] - 1) * 100 if len(ohlcv) >= 5 else 0
+        ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) * 100 if len(ohlcv) >= 63 else 0
+
         records.append({
             'symbol': symbol,
             'close': close,
+            'return_1w': round(ret_1w, 1),
+            'return_3m': round(ret_3m, 1),
             'mrs': mrs,
             'deliv': deliv,
             'vam': vam,

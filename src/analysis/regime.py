@@ -128,7 +128,7 @@ def get_macro_snapshot(nifty_df: pd.DataFrame, vix_df: pd.DataFrame,
         'nifty_dma_pct': round(dma_pct, 1),
         'india_vix': round(vix, 1),
         'usdinr': round(usdinr, 2),
-        'usdinr_30d_move': round(inr_30d, 1),
+        'usdinr_30d_move': round(inr_30d, 2),
         'fii_net': round(fii_data.get('fii_net', 0), 0),
         'dii_net': round(fii_data.get('dii_net', 0), 0),
     }

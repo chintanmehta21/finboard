@@ -10,6 +10,7 @@ import logging
 import requests
 
 from .formatter import format_discord_report
+from src.config import SYSTEM_NAME
 from src.utils.key_loader import get_key
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ def send_holiday_message() -> bool:
     if not webhook_url:
         return False
 
-    msg = '# NSE Alpha System\nMarket holiday today. System resumes next trading day.'
+    msg = f'# {SYSTEM_NAME}\nMarket holiday today. System resumes next trading day.'
     return _send_webhook(webhook_url, msg)
 
 
@@ -53,7 +54,7 @@ def send_error_message(error: str) -> bool:
     if not webhook_url:
         return False
 
-    msg = f'## NSE Alpha System - Error\n```\n{error[:500]}\n```\nCheck GitHub Actions logs.'
+    msg = f'## {SYSTEM_NAME} — Error\n```\n{error[:500]}\n```\nCheck GitHub Actions logs.'
     return _send_webhook(webhook_url, msg)
 
 
@@ -66,7 +67,7 @@ def _send_webhook(webhook_url: str, content: str) -> bool:
         try:
             resp = requests.post(
                 webhook_url,
-                json={'content': chunk, 'username': 'NSE Alpha System'},
+                json={'content': chunk, 'username': SYSTEM_NAME},
                 timeout=30
             )
 

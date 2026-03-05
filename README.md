@@ -1,4 +1,4 @@
-# NSE Alpha System v2.0
+# Finboard v2.0
 
 **TechnoFundamental Quantitative Signal System for NSE 500**
 

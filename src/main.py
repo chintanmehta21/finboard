@@ -1,5 +1,5 @@
 """
-NSE Alpha System — Main Orchestrator
+Finboard — Main Orchestrator
 
 Entry point for the daily analysis pipeline. Coordinates:
 1. Authentication (Fyers TOTP headless)
@@ -15,10 +15,13 @@ day's data so signals are ready at market open.
 import sys
 import logging
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pytz
+
+from src.config import SYSTEM_NAME, SYSTEM_FULL_NAME
 
 # Configure logging before any imports that use it
 LOG_DIR = Path('logs')
@@ -32,7 +35,7 @@ logging.basicConfig(
         logging.FileHandler(LOG_DIR / f'run_{date.today().isoformat()}.log'),
     ]
 )
-logger = logging.getLogger('nse_alpha')
+logger = logging.getLogger('finboard')
 
 # Key loader initializes on first use — reads Admin/.env (local)
 # or falls back to os.environ (GitHub Actions production)
@@ -50,7 +53,7 @@ def main():
     IST = pytz.timezone('Asia/Kolkata')
     now = datetime.now(IST)
     logger.info(f"{'='*60}")
-    logger.info(f"NSE Alpha System v2.0 — Pipeline Start")
+    logger.info(f"{SYSTEM_FULL_NAME} — Pipeline Start")
     logger.info(f"Date: {now.strftime('%A, %d %b %Y %I:%M %p IST')}")
     logger.info(f"{'='*60}")
 
@@ -102,11 +105,11 @@ def _run_live_pipeline():
     # ── Step 3: Fetch market data ──
     logger.info("STEP 3: Fetching market data")
 
-    # 3a: Fetch index data (Nifty 500, VIX, USD/INR)
+    # 3a: Fetch index data (Nifty 500, VIX, USD/INR) — sequential (Fyers rate-limited)
     from src.data.fyers_client import fetch_all_ohlcv, fetch_index_data
     index_data = fetch_index_data(fyers, years=2)
 
-    # 3b: Fetch OHLCV for all stocks
+    # 3b: Fetch OHLCV for all stocks — sequential (Fyers rate-limited)
     ohlcv_data = fetch_all_ohlcv(fyers, symbols, years=2)
     logger.info(f"OHLCV data: {len(ohlcv_data)}/{len(symbols)} symbols")
 
@@ -115,9 +118,9 @@ def _run_live_pipeline():
     last_trading_date = _get_last_trading_date(ohlcv_data)
     logger.info(f"Last trading date detected: {last_trading_date}")
 
-    bhavcopy_df = fetch_bhavcopy(last_trading_date)
+    bhavcopy_df = fetch_bhavcopy(last_trading_date, symbols=list(ohlcv_data.keys()))
 
-    if bhavcopy_df is None:
+    if bhavcopy_df is None or bhavcopy_df.empty:
         logger.warning(
             f"Bhavcopy unavailable for {last_trading_date} "
             f"— likely market holiday"
@@ -128,20 +131,11 @@ def _run_live_pipeline():
 
     logger.info(f"Bhavcopy: {len(bhavcopy_df)} records")
 
-    # 3d: Fetch FII/DII flows
-    from src.data.nse_fiidii import fetch_fiidii_flows, build_fiidii_df
-    fii_data = fetch_fiidii_flows()
-    fii_df = build_fiidii_df(fii_data)
-
-    # 3e: Fetch fundamentals (yfinance)
-    logger.info("STEP 3e: Fetching fundamentals (yfinance)")
-    from src.data.fundamentals import get_fundamentals_batch
-    fundamentals = get_fundamentals_batch(list(ohlcv_data.keys()))
-
-    # 3f: Fetch pledge data
-    logger.info("STEP 3f: Fetching pledge data")
-    from src.data.nse_pledge import get_pledge_data_batch
-    pledge_data = get_pledge_data_batch(list(ohlcv_data.keys()))
+    # 3d-3f: Parallel fetch of independent data sources
+    logger.info("STEP 3d-f: Parallel fetching (FII/DII, fundamentals, pledge)")
+    fii_data, fii_df, fundamentals, pledge_data = _parallel_fetch(
+        list(ohlcv_data.keys())
+    )
 
     # ── Step 4: Run analysis pipeline ──
     logger.info("STEP 4: Running 5-stage analysis pipeline")
@@ -163,7 +157,67 @@ def _run_live_pipeline():
         sector_map=sector_map,
     )
 
+    # Set last trading date for output modules
+    result['last_trading_date'] = last_trading_date
+
     _output_results(result)
+
+
+def _parallel_fetch(symbols: list[str]) -> tuple:
+    """
+    Fetch FII/DII, fundamentals, and pledge data in parallel.
+
+    These are independent API calls (NSE, yfinance, NSE) that don't
+    depend on each other and can safely run concurrently.
+    """
+    from src.data.nse_fiidii import fetch_fiidii_flows, build_fiidii_df
+    from src.data.fundamentals import get_fundamentals_batch
+    from src.data.nse_pledge import get_pledge_data_batch
+
+    fii_data_result = {}
+    fii_df_result = None
+    fundamentals_result = {}
+    pledge_result = {}
+
+    def _fetch_fiidii():
+        data = fetch_fiidii_flows()
+        df = build_fiidii_df(data)
+        return data, df
+
+    def _fetch_fundamentals():
+        return get_fundamentals_batch(symbols)
+
+    def _fetch_pledge():
+        return get_pledge_data_batch(symbols)
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(_fetch_fiidii): 'fiidii',
+            executor.submit(_fetch_fundamentals): 'fundamentals',
+            executor.submit(_fetch_pledge): 'pledge',
+        }
+
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                if name == 'fiidii':
+                    fii_data_result, fii_df_result = future.result()
+                    logger.info("Parallel: FII/DII done")
+                elif name == 'fundamentals':
+                    fundamentals_result = future.result()
+                    logger.info(f"Parallel: Fundamentals done ({len(fundamentals_result)} symbols)")
+                elif name == 'pledge':
+                    pledge_result = future.result()
+                    logger.info(f"Parallel: Pledge done ({len(pledge_result)} symbols)")
+            except Exception as e:
+                logger.warning(f"Parallel fetch '{name}' failed: {e}")
+
+    # Ensure fii_df is at least an empty DataFrame
+    if fii_df_result is None:
+        import pandas as pd
+        fii_df_result = pd.DataFrame()
+
+    return fii_data_result, fii_df_result, fundamentals_result, pledge_result
 
 
 def _run_sample_pipeline():
@@ -226,6 +280,7 @@ def _run_sample_pipeline():
 
     # Mark as sample data in the result
     result['sample_mode'] = True
+    result['last_trading_date'] = last_trading_date
 
     _output_results(result)
 
@@ -251,7 +306,7 @@ def _output_results(result: dict):
     discord_ok = discord_send(result)
     logger.info(f"Discord{sample_tag}: {'sent' if discord_ok else 'skipped/failed'}")
 
-    # 5c: JSON export for dashboard
+    # 5c: JSON export for dashboard (with backup/fallback)
     from src.output.json_export import export_signals
     json_path = export_signals(result)
     logger.info(f"JSON export: {json_path}")

@@ -3,15 +3,21 @@ JSON Export — Dashboard Data Feed
 
 Exports pipeline results as a JSON file for the Vercel-hosted web dashboard.
 The dashboard reads this JSON as static data, updated daily by GitHub Actions.
+
+Includes backup logic: previous signals.json is preserved as signals_prev.json
+before overwriting, so the dashboard always has data to display.
 """
 
 import json
 import logging
-from datetime import datetime
+import shutil
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
 import pytz
+
+from src.config import SYSTEM_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +29,9 @@ def export_signals(result: dict, output_path: str = None) -> str:
     """
     Export pipeline results as JSON for dashboard consumption.
 
+    Uses last_trading_date from result for date fields instead of datetime.now().
+    Backs up previous signals.json before overwriting.
+
     Args:
         result: Pipeline output dict
         output_path: Custom output path (default: dashboard/public/data/signals.json)
@@ -33,12 +42,34 @@ def export_signals(result: dict, output_path: str = None) -> str:
     export_path = Path(output_path) if output_path else EXPORT_DIR / 'signals.json'
     export_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Backup existing file before overwriting
+    if export_path.exists():
+        backup_path = export_path.parent / 'signals_prev.json'
+        try:
+            shutil.copy2(export_path, backup_path)
+            logger.debug(f"Backed up previous signals to {backup_path}")
+        except Exception as e:
+            logger.warning(f"Failed to backup signals.json: {e}")
+
     now = datetime.now(IST)
+
+    # Use last_trading_date from pipeline result (not datetime.now())
+    last_trading_date = result.get('last_trading_date')
+    if last_trading_date:
+        if isinstance(last_trading_date, date):
+            display_date = last_trading_date.strftime('%A, %d %b %Y')
+            date_str = last_trading_date.isoformat()
+        else:
+            display_date = str(last_trading_date)
+            date_str = str(last_trading_date)
+    else:
+        display_date = now.strftime('%A, %d %b %Y')
+        date_str = now.strftime('%Y-%m-%d')
 
     data = {
         'generated_at': now.isoformat(),
-        'date': now.strftime('%Y-%m-%d'),
-        'display_date': now.strftime('%A, %d %b %Y'),
+        'date': date_str,
+        'display_date': display_date,
         'sample_mode': result.get('sample_mode', False),
         'regime': {
             'name': result.get('regime_name', 'UNKNOWN'),
@@ -58,12 +89,20 @@ def export_signals(result: dict, output_path: str = None) -> str:
     return str(export_path)
 
 
-def _df_to_records(df: pd.DataFrame) -> list[dict]:
-    """Convert DataFrame to list of dicts, handling NaN values."""
-    if df is None or df.empty:
+def _df_to_records(df) -> list[dict]:
+    """Convert DataFrame or list to list of dicts, handling NaN values."""
+    if df is None:
         return []
 
-    records = df.to_dict('records')
+    # Handle list input (already list of dicts)
+    if isinstance(df, list):
+        records = df
+    elif isinstance(df, pd.DataFrame):
+        if df.empty:
+            return []
+        records = df.to_dict('records')
+    else:
+        return []
 
     # Clean NaN/inf values for JSON serialization
     clean_records = []

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-05T21:43:06.263874+05:30",
+  "generated_at": "2026-03-05T21:04:23.768274+05:30",
   "date": "2026-03-05",
   "display_date": "Thursday, 05 Mar 2026",
   "sample_mode": false,
@@ -15,11 +15,11 @@
     "india_vix": 17.9,
     "usdinr": 92.01,
     "usdinr_30d_move": 0.52,
-    "fii_net": -3753.0,
-    "dii_net": 5153.0
+    "fii_net": 0.0,
+    "dii_net": 0.0
   },
   "pipeline_stats": {
-    "total_universe": 50,
+    "total_universe": 5,
     "stage_1a_pass": 0,
     "stage_1b_pass": 0,
     "stage_1c_pass": 0,
@@ -37,5 +37,6 @@
     "rev": 0.0
   },
   "bullish": [],
-  "bearish": []
+  "bearish": [],
+  "defensive": []
 }

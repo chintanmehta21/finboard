@@ -1,4 +1,4 @@
-name: NSE Alpha System — Daily Analysis
+name: Finboard — Daily Analysis
 
 on:
   schedule:
@@ -57,8 +57,8 @@ jobs:
 
       - name: Commit updated dashboard data
         run: |
-          git config user.name "NSE Alpha Bot"
-          git config user.email "bot@nse-alpha.local"
+          git config user.name "Finboard Bot"
+          git config user.email "bot@finboard.local"
           git add dashboard/public/data/signals.json || true
           git diff --staged --quiet || git commit -m "chore: update daily signals $(date +'%Y-%m-%d')"
           git push || true
@@ -82,7 +82,7 @@ jobs:
           token = os.environ.get('TELEGRAM_TOKEN', '')
           chat = os.environ.get('TELEGRAM_CHAT', '')
           if token and chat:
-              msg = '⚠️ <b>NSE Alpha System — PIPELINE FAILED</b>\n\n'
+              msg = '⚠️ <b>Finboard — PIPELINE FAILED</b>\n\n'
               msg += 'The daily analysis workflow failed.\n'
               msg += 'Check GitHub Actions logs for details.\n'
               msg += f'Run: $(date +\"%Y-%m-%d %H:%M UTC\")'
@@ -105,7 +105,7 @@ jobs:
           import requests, os
           webhook = os.environ.get('DISCORD_WEBHOOK_URL', '')
           if webhook:
-              msg = '⚠️ **NSE Alpha System — PIPELINE FAILED**\n\n'
+              msg = '⚠️ **Finboard — PIPELINE FAILED**\n\n'
               msg += 'The daily analysis workflow failed.\n'
               msg += 'Check GitHub Actions logs for details.'
               try:
