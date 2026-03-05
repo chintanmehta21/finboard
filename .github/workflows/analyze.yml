@@ -2,16 +2,16 @@ name: Finboard — Daily Analysis
 
 on:
   schedule:
-    # 03:30 UTC = 9:00 AM IST — before market open (9:15 AM IST)
-    # Analyzes previous trading day's data so signals are ready at market open.
+    # 15:30 UTC = 9:00 PM IST — after market close (3:30 PM IST)
+    # Analyzes today's trading data. Bhavcopy available ~4 PM, OHLCV by close.
     # India does not observe DST, so UTC+5:30 is fixed year-round.
-    - cron: '30 3 * * 1-5'
+    - cron: '30 15 * * 1-5'
   workflow_dispatch: # Manual trigger for testing
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    timeout-minutes: 25  # Safety cap
+    timeout-minutes: 30  # Safety cap
 
     steps:
       - name: Checkout repo

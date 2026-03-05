@@ -7,9 +7,9 @@ Entry point for the daily analysis pipeline. Coordinates:
 3. Analysis (5-stage pipeline)
 4. Output (Telegram, Discord, JSON export for dashboard)
 
-Runs daily via GitHub Actions at 9:00 AM IST (Mon-Fri),
-before market opens at 9:15 AM. Analyzes the previous trading
-day's data so signals are ready at market open.
+Runs daily via GitHub Actions at 9:00 PM IST (Mon-Fri),
+after market close (3:30 PM IST). Analyzes today's trading
+data so signals reflect the current day's price action.
 """
 
 import sys

@@ -2,10 +2,10 @@ name: Finboard — Weekly Backtest
 
 on:
   schedule:
-    # 15:30 UTC Friday = 9:00 PM IST Friday
-    # Runs after market close on Friday to validate system performance.
+    # 16:30 UTC Friday = 10:00 PM IST Friday
+    # Runs 1 hour after the daily pipeline on Friday to validate system performance.
     # India does not observe DST, so UTC+5:30 is fixed year-round.
-    - cron: '30 15 * * 5'
+    - cron: '30 16 * * 5'
   workflow_dispatch: # Manual trigger for testing
 
 jobs:
