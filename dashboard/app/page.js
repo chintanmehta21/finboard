@@ -10,7 +10,7 @@ const REGIME_CONFIG = {
 };
 
 const MAX_DISPLAY = 10;
-const CM_HYPERLINK = 'https://www.linkedin.com/in/mr-chintanmehta/';
+const CM_HYPERLINK = process.env.NEXT_PUBLIC_CM_HYPERLINK || 'https://www.linkedin.com/in/mr-chintanmehta/';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);

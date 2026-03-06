@@ -46,6 +46,7 @@ jobs:
           FYERS_TOTP_KEY:  ${{ secrets.FYERS_TOTP_KEY }}
           TELEGRAM_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python -m Tests.backtest.run_backtest --weeks 52
 
       - name: Save token cache for next run
