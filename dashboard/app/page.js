@@ -111,7 +111,7 @@ export default function Dashboard() {
       {/* Footer */}
       <footer className="footer">
         Finboard v2.0 | NOT financial advice<br />
-        Data updated daily at 9:00 AM IST (Mon-Fri)<br />
+        Data updated daily before market opens (Mon-Fri)<br />
         Made by <a href={CM_HYPERLINK} target="_blank" rel="noopener noreferrer" className="cm-link">CM</a>
       </footer>
     </div>
@@ -140,6 +140,7 @@ function BullishCard({ stock, rank, regimeScalar, regimeName }) {
         </div>
         <div className="metrics">
           <div><div className="metric-label">CMP</div>{'\u20B9'}{fmt(stock.close)}</div>
+          {stock.return_1d != null && <div><div className="metric-label">Today</div><span className={stock.return_1d > 0 ? 'positive' : 'negative'}>{stock.return_1d > 0 ? '+' : ''}{(stock.return_1d || 0).toFixed(1)}%</span></div>}
           {stock.return_3m != null && <div><div className="metric-label">3M Ret</div><span className={stock.return_3m > 0 ? 'positive' : 'negative'}>{(stock.return_3m || 0).toFixed(1)}%</span></div>}
           {stock.return_1w != null && <div><div className="metric-label">1W Ret</div><span className={stock.return_1w > 0 ? 'positive' : 'negative'}>{(stock.return_1w || 0).toFixed(1)}%</span></div>}
           {stock.target_high ? <div><div className="metric-label">Target</div>{'\u20B9'}{fmt(stock.target_high)}</div> : null}
@@ -174,6 +175,7 @@ function BearishCard({ stock, rank }) {
         </div>
         <div className="metrics">
           <div><div className="metric-label">CMP</div>{'\u20B9'}{fmt(stock.close)}</div>
+          {stock.return_1d != null && <div><div className="metric-label">Today</div><span className={stock.return_1d > 0 ? 'positive' : 'negative'}>{stock.return_1d > 0 ? '+' : ''}{(stock.return_1d || 0).toFixed(1)}%</span></div>}
           {stock.return_3m != null && <div><div className="metric-label">3M Ret</div><span className={stock.return_3m > 0 ? 'positive' : 'negative'}>{(stock.return_3m || 0).toFixed(1)}%</span></div>}
           {stock.return_1w != null && <div><div className="metric-label">1W Ret</div><span className={stock.return_1w > 0 ? 'positive' : 'negative'}>{(stock.return_1w || 0).toFixed(1)}%</span></div>}
           <div><div className="metric-label">M-Score</div><span className="negative">{stock.m_score}</span></div>
@@ -199,7 +201,7 @@ function NoDataView({ message }) {
       <div style={{ textAlign: 'center', padding: 64, color: 'var(--text-secondary)' }}>
         <p style={{ fontSize: 18, marginBottom: 12 }}>No signal data available yet</p>
         <p style={{ fontSize: 13 }}>{message}</p>
-        <p style={{ fontSize: 13, marginTop: 8 }}>The pipeline runs daily at 9:00 AM IST (Mon-Fri).</p>
+        <p style={{ fontSize: 13, marginTop: 8 }}>The pipeline runs daily before market opens (Mon-Fri).</p>
       </div>
     </div>
   );

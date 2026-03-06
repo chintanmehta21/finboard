@@ -186,13 +186,15 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
 
         close = float(ohlcv['close'].iloc[-1])
 
-        # Returns: 1-week and 3-month
+        # Returns: 1-day, 1-week, and 3-month
+        ret_1d = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-2] - 1) * 100 if len(ohlcv) >= 2 else 0
         ret_1w = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-5] - 1) * 100 if len(ohlcv) >= 5 else 0
         ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) * 100 if len(ohlcv) >= 63 else 0
 
         records.append({
             'symbol': symbol,
             'close': close,
+            'return_1d': round(ret_1d, 1),
             'return_1w': round(ret_1w, 1),
             'return_3m': round(ret_3m, 1),
             'mrs': mrs,

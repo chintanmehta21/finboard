@@ -55,9 +55,9 @@ def format_telegram_report(result: dict) -> str:
 
     lines = []
 
-    # Header — clean, no emoji prefix
+    # Header
     lines.append(f'<b>{SYSTEM_NAME} — Daily Report</b>')
-    lines.append(f'{display_date}')
+    lines.append(f'\U0001F4C5 {display_date}')
     lines.append(f'Regime: <b>{regime_info["label"]}</b> ({regime_info["exposure"]} exp.)')
 
     # Regime warning for BEAR
@@ -66,18 +66,19 @@ def format_telegram_report(result: dict) -> str:
 
     lines.append(DIVIDER_TELEGRAM)
 
-    # Bullish candidates (top N only)
+    # Bullish candidates (top N only) — always show header
     bullish = result.get('bullish')
+    lines.append('')
+    lines.append('\U0001F4C8 <b>TOP BULLISH CANDIDATES</b>')
+    lines.append('')
+
     if bullish is not None:
         if isinstance(bullish, pd.DataFrame) and not bullish.empty:
-            lines.append('')
-            lines.append('<b>TOP BULLISH CANDIDATES</b>')
-            lines.append('')
-
             top_n = bullish.head(TELEGRAM_TOP_N)
             for i, (_, row) in enumerate(top_n.iterrows(), 1):
                 confidence = row.get('adj_confidence', row.get('defensive_score', row.get('confidence', 0)))
                 close = row.get('close', 0)
+                ret_1d = row.get('return_1d', 0)
                 ret_3m = row.get('return_3m', 0)
                 ret_1w = row.get('return_1w', 0)
                 target = row.get('target_high', 0)
@@ -100,55 +101,59 @@ def format_telegram_report(result: dict) -> str:
                         target_line += f' | S/L: ₹{stop:,.0f}'
                     lines.append(target_line)
 
+                # Today's change on its own line
+                sign = '+' if ret_1d >= 0 else ''
+                lines.append(f'   Today: {sign}{ret_1d:.1f}%')
                 lines.append('')
         elif isinstance(bullish, list) and bullish:
-            lines.append('')
-            lines.append('<b>TOP BULLISH CANDIDATES</b>')
-            lines.append('')
             for i, row in enumerate(bullish[:TELEGRAM_TOP_N], 1):
                 lines.append(f'<b>{i}. {row.get("symbol", "")}</b>')
                 lines.append(f'   CMP: ₹{row.get("close", 0):,.0f}')
                 lines.append('')
         else:
-            lines.append('')
             lines.append('No bullish candidates passed all stages today.')
             lines.append('')
     else:
-        lines.append('')
         lines.append('No bullish candidates passed all stages today.')
         lines.append('')
 
     lines.append(DIVIDER_TELEGRAM)
 
-    # Bearish candidates (top N only)
+    # Bearish candidates (top N only) — always show header
     bearish = result.get('bearish')
-    if bearish is not None:
-        if isinstance(bearish, pd.DataFrame) and not bearish.empty:
-            lines.append('')
-            lines.append('<b>BEARISH CANDIDATES</b>')
-            lines.append('')
+    lines.append('')
+    lines.append('\U0001F4C9 <b>BEARISH CANDIDATES</b>')
+    lines.append('')
 
-            top_n = bearish.head(TELEGRAM_TOP_N)
-            for i, (_, row) in enumerate(top_n.iterrows(), 1):
-                close = row.get('close', 0)
-                ret_3m = row.get('return_3m', 0)
-                ret_1w = row.get('return_1w', 0)
-                lines.append(f'<b>{i}. {row["symbol"]}</b> — Score: <b>{row.get("bearish_score", 0):.0f}</b>')
-                metrics = f'   CMP: ₹{close:,.0f}'
-                if ret_3m:
-                    metrics += f' | 3M: {ret_3m:+.1f}%'
-                if ret_1w:
-                    metrics += f' | 1W: {ret_1w:+.1f}%'
-                lines.append(metrics)
-                lines.append(f'   M-Score: {row.get("m_score", 0):.1f} | CCR: {row.get("ccr", 0):.2f} | RS: {row.get("mansfield_rs", 0):.1f}')
-                lines.append('')
+    if bearish is not None and isinstance(bearish, pd.DataFrame) and not bearish.empty:
+        top_n = bearish.head(TELEGRAM_TOP_N)
+        for i, (_, row) in enumerate(top_n.iterrows(), 1):
+            close = row.get('close', 0)
+            ret_1d = row.get('return_1d', 0)
+            ret_3m = row.get('return_3m', 0)
+            ret_1w = row.get('return_1w', 0)
+            lines.append(f'<b>{i}. {row["symbol"]}</b> — Score: <b>{row.get("bearish_score", 0):.0f}</b>')
+            metrics = f'   CMP: ₹{close:,.0f}'
+            if ret_3m:
+                metrics += f' | 3M: {ret_3m:+.1f}%'
+            if ret_1w:
+                metrics += f' | 1W: {ret_1w:+.1f}%'
+            lines.append(metrics)
+            lines.append(f'   M-Score: {row.get("m_score", 0):.1f} | CCR: {row.get("ccr", 0):.2f} | RS: {row.get("mansfield_rs", 0):.1f}')
+            # Today's change on its own line
+            sign = '+' if ret_1d >= 0 else ''
+            lines.append(f'   Today: {sign}{ret_1d:.1f}%')
+            lines.append('')
+    else:
+        lines.append('No bearish candidates identified today.')
+        lines.append('')
 
     lines.append(DIVIDER_TELEGRAM)
 
     # Macro snapshot
     macro = result.get('macro_snapshot', {})
     lines.append('')
-    lines.append('<b>MACRO SNAPSHOT</b>')
+    lines.append('\U0001F4CA <b>MACRO SNAPSHOT</b>')
 
     nifty = macro.get('nifty_close', 0)
     dma = macro.get('nifty_200dma', 0)
@@ -170,7 +175,7 @@ def format_telegram_report(result: dict) -> str:
     lines.append(DIVIDER_TELEGRAM)
 
     # Footer — minimal
-    lines.append('<i>NOT financial advice</i>')
+    lines.append('\u26A0\uFE0F <i>NOT financial advice</i>')
 
     return '\n'.join(lines)
 
@@ -189,7 +194,7 @@ def format_discord_report(result: dict) -> str:
 
     # Header
     lines.append(f'# {SYSTEM_NAME} — Daily Report')
-    lines.append(f'**{display_date}**')
+    lines.append(f'\U0001F4C5 **{display_date}**')
     lines.append(f'Regime: **{regime_info["label"]}** ({regime_info["exposure"]} exp.)')
 
     if regime_scalar == 0:
@@ -197,50 +202,52 @@ def format_discord_report(result: dict) -> str:
 
     lines.append('---')
 
-    # Bullish
+    # Bullish — always show header
     bullish = result.get('bullish')
-    if bullish is not None:
-        if isinstance(bullish, pd.DataFrame) and not bullish.empty:
-            lines.append('## TOP BULLISH CANDIDATES')
+    lines.append('\U0001F4C8 ## TOP BULLISH CANDIDATES')
+    lines.append('')
+
+    if bullish is not None and isinstance(bullish, pd.DataFrame) and not bullish.empty:
+        top_n = bullish.head(DISCORD_TOP_N)
+        for i, (_, row) in enumerate(top_n.iterrows(), 1):
+            confidence = row.get('adj_confidence', row.get('defensive_score', row.get('confidence', 0)))
+            close = row.get('close', 0)
+            ret_1d = row.get('return_1d', 0)
+            ret_3m = row.get('return_3m', 0)
+            ret_1w = row.get('return_1w', 0)
+            target = row.get('target_high', 0)
+            stop = row.get('stop_loss', 0)
+
+            lines.append(f'**{i}. {row["symbol"]}** — Score: **{confidence:.0f}**')
+            metrics = f'> CMP: Rs.{close:,.0f}'
+            if ret_3m:
+                metrics += f' | 3M: {ret_3m:+.1f}%'
+            if ret_1w:
+                metrics += f' | 1W: {ret_1w:+.1f}%'
+            if target:
+                metrics += f' | Target: Rs.{target:,.0f}'
+            if stop:
+                metrics += f' | S/L: Rs.{stop:,.0f}'
+            lines.append(metrics)
+            sign = '+' if ret_1d >= 0 else ''
+            lines.append(f'> Today: {sign}{ret_1d:.1f}%')
             lines.append('')
-
-            top_n = bullish.head(DISCORD_TOP_N)
-            for i, (_, row) in enumerate(top_n.iterrows(), 1):
-                confidence = row.get('adj_confidence', row.get('defensive_score', row.get('confidence', 0)))
-                close = row.get('close', 0)
-                ret_3m = row.get('return_3m', 0)
-                ret_1w = row.get('return_1w', 0)
-                target = row.get('target_high', 0)
-                stop = row.get('stop_loss', 0)
-
-                lines.append(f'**{i}. {row["symbol"]}** — Score: **{confidence:.0f}**')
-                metrics = f'> CMP: Rs.{close:,.0f}'
-                if ret_3m:
-                    metrics += f' | 3M: {ret_3m:+.1f}%'
-                if ret_1w:
-                    metrics += f' | 1W: {ret_1w:+.1f}%'
-                if target:
-                    metrics += f' | Target: Rs.{target:,.0f}'
-                if stop:
-                    metrics += f' | S/L: Rs.{stop:,.0f}'
-                lines.append(metrics)
-                lines.append('')
-        else:
-            lines.append('> No bullish candidates today.')
     else:
-        lines.append('> No bullish candidates today.')
+        lines.append('> No bullish candidates passed all stages today.')
+        lines.append('')
 
     lines.append('---')
 
-    # Bearish
+    # Bearish — always show header
     bearish = result.get('bearish')
-    if bearish is not None and isinstance(bearish, pd.DataFrame) and not bearish.empty:
-        lines.append('## BEARISH CANDIDATES')
-        lines.append('')
+    lines.append('\U0001F4C9 ## BEARISH CANDIDATES')
+    lines.append('')
 
+    if bearish is not None and isinstance(bearish, pd.DataFrame) and not bearish.empty:
         top_n = bearish.head(DISCORD_TOP_N)
         for i, (_, row) in enumerate(top_n.iterrows(), 1):
             close = row.get('close', 0)
+            ret_1d = row.get('return_1d', 0)
             ret_3m = row.get('return_3m', 0)
             ret_1w = row.get('return_1w', 0)
             lines.append(f'**{i}. {row["symbol"]}** — Score: **{row.get("bearish_score", 0):.0f}**')
@@ -251,13 +258,18 @@ def format_discord_report(result: dict) -> str:
                 metrics += f' | 1W: {ret_1w:+.1f}%'
             metrics += f' | M-Score: {row.get("m_score", 0):.1f} | CCR: {row.get("ccr", 0):.2f}'
             lines.append(metrics)
+            sign = '+' if ret_1d >= 0 else ''
+            lines.append(f'> Today: {sign}{ret_1d:.1f}%')
             lines.append('')
+    else:
+        lines.append('> No bearish candidates identified today.')
+        lines.append('')
 
     lines.append('---')
 
     # Macro
     macro = result.get('macro_snapshot', {})
-    lines.append('## MACRO SNAPSHOT')
+    lines.append('\U0001F4CA ## MACRO SNAPSHOT')
     usdinr = macro.get('usdinr', 0)
     inr_move = macro.get('usdinr_30d_move', 0)
     lines.append(
@@ -268,6 +280,6 @@ def format_discord_report(result: dict) -> str:
         f'DII: Rs.{macro.get("dii_net", 0):,.0f} Cr'
     )
     lines.append('')
-    lines.append('*NOT financial advice*')
+    lines.append('\u26A0\uFE0F *NOT financial advice*')
 
     return '\n'.join(lines)
