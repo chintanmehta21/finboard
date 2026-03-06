@@ -135,27 +135,37 @@ def _totp_headless_login() -> dict:
 
     # Step 1: Send login OTP — try multiple endpoint versions
     # v2 endpoint requires Base64-encoded fy_id, v1 takes plain
+    # Uses json= parameter (not data=) so Content-Type: application/json is set
     request_key = None
+    last_error = ""
     for login_url in FYERS_LOGIN_OTP_URLS:
         is_v2 = 'v2' in login_url.split('/')[-1]
         fy_id_val = _b64(client_id) if is_v2 else client_id
 
-        payload = f'{{"fy_id":"{fy_id_val}","app_id":"2"}}'
+        payload = {"fy_id": fy_id_val, "app_id": "2"}
         logger.info(f"Step 1: Trying {login_url.split('/')[-1]}...")
-        resp = s.post(login_url, data=payload, timeout=30)
+        try:
+            resp = s.post(login_url, json=payload, timeout=30)
 
-        if resp.status_code == 200:
-            result = resp.json()
-            request_key = result.get('request_key')
-            if request_key:
-                logger.info(f"Step 1 OK: Got request_key via {login_url.split('/')[-1]}")
-                break
-        else:
-            logger.warning(f"  {login_url.split('/')[-1]} returned {resp.status_code}: {resp.text[:200]}")
+            if resp.status_code == 200:
+                result = resp.json()
+                request_key = result.get('request_key')
+                if request_key:
+                    logger.info(f"Step 1 OK: Got request_key via {login_url.split('/')[-1]}")
+                    break
+                else:
+                    last_error = f"200 but no request_key: {resp.text[:200]}"
+                    logger.warning(f"  {login_url.split('/')[-1]}: {last_error}")
+            else:
+                last_error = f"{resp.status_code}: {resp.text[:200]}"
+                logger.warning(f"  {login_url.split('/')[-1]} returned {last_error}")
+        except requests.RequestException as e:
+            last_error = str(e)
+            logger.warning(f"  {login_url.split('/')[-1]} request failed: {e}")
 
     if not request_key:
         raise RuntimeError(
-            f"All login OTP endpoints failed. Last response: {resp.text[:300]}. "
+            f"All login OTP endpoints failed. Last error: {last_error}. "
             "This usually means TOTP is not enabled on the Fyers account, "
             "or the account needs first-time browser authorization. "
             "Visit https://myaccount.fyers.in/ManageAccount to enable External TOTP."
@@ -167,25 +177,27 @@ def _totp_headless_login() -> dict:
         time.sleep(5)
 
     totp_code = pyotp.TOTP(totp_key).now()
-    payload = f'{{"request_key":"{request_key}","otp":{totp_code}}}'
+    payload = {"request_key": request_key, "otp": totp_code}
     logger.info("Step 2: Verifying TOTP...")
-    resp = s.post(FYERS_VERIFY_URL, data=payload, timeout=30)
-    resp.raise_for_status()
+    resp = s.post(FYERS_VERIFY_URL, json=payload, timeout=30)
+    if resp.status_code != 200:
+        raise RuntimeError(f"TOTP verification failed ({resp.status_code}): {resp.text[:300]}")
     result = resp.json()
     request_key = result.get('request_key')
     if not request_key:
-        raise RuntimeError(f"TOTP verification failed: {result}")
+        raise RuntimeError(f"TOTP verification returned no request_key: {result}")
     logger.info("Step 2 OK: TOTP verified")
 
     # Step 3: Verify PIN (Base64-encoded for v2 endpoint)
-    payload = f'{{"request_key":"{request_key}","identity_type":"pin","identifier":"{_b64(pin)}"}}'
+    payload = {"request_key": request_key, "identity_type": "pin", "identifier": _b64(pin)}
     logger.info("Step 3: Verifying PIN...")
-    resp = s.post(FYERS_VERIFY_PIN_URL, data=payload, timeout=30)
-    resp.raise_for_status()
+    resp = s.post(FYERS_VERIFY_PIN_URL, json=payload, timeout=30)
+    if resp.status_code != 200:
+        raise RuntimeError(f"PIN verification failed ({resp.status_code}): {resp.text[:300]}")
     result = resp.json()
     access_token_data = result.get('data', {}).get('access_token')
     if not access_token_data:
-        raise RuntimeError(f"PIN verification failed: {result}")
+        raise RuntimeError(f"PIN verification returned no access_token: {result}")
     logger.info("Step 3 OK: PIN verified, got bearer token")
 
     # Step 4: Exchange for auth_code via token endpoint
