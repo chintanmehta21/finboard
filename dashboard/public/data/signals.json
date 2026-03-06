@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-03-05T21:43:06.263874+05:30",
-  "date": "2026-03-05",
-  "display_date": "Thursday, 05 Mar 2026",
+  "generated_at": "2026-03-06T21:57:26.094014+05:30",
+  "date": "2026-03-06",
+  "display_date": "Friday, 06 Mar 2026",
   "sample_mode": false,
   "regime": {
     "name": "BEAR",
@@ -9,24 +9,24 @@
     "exposure_pct": 0
   },
   "macro": {
-    "nifty_close": 22697.8,
-    "nifty_200dma": 23306.49,
-    "nifty_dma_pct": -2.6,
-    "india_vix": 17.9,
-    "usdinr": 92.01,
-    "usdinr_30d_move": 0.52,
-    "fii_net": -3753.0,
-    "dii_net": 5153.0
+    "nifty_close": 22481.3,
+    "nifty_200dma": 23305.97,
+    "nifty_dma_pct": -3.5,
+    "india_vix": 19.9,
+    "usdinr": 92.12,
+    "usdinr_30d_move": 0.62,
+    "fii_net": -6030.0,
+    "dii_net": 6972.0
   },
   "pipeline_stats": {
-    "total_universe": 50,
+    "total_universe": 498,
     "stage_1a_pass": 0,
     "stage_1b_pass": 0,
     "stage_1c_pass": 0,
     "stage_2_scored": 0,
-    "date": "2026-03-05",
+    "date": "2026-03-06",
     "regime": "BEAR",
-    "vix": 17.9,
+    "vix": 19.9,
     "high_vix_mode": false
   },
   "factor_weights": {
@@ -36,6 +36,46 @@
     "for": 0.0,
     "rev": 0.0
   },
-  "bullish": [],
+  "bullish": [
+    {
+      "symbol": "HEXT",
+      "close": 459.9,
+      "sector": "Information Technology",
+      "ccr": 1.7,
+      "debt_equity": 0.11,
+      "return_3m": -39.1,
+      "return_1w": -2.9,
+      "defensive_score": 84.8,
+      "atr14": 27.04,
+      "target_high": 541.02,
+      "stop_loss": 405.82
+    },
+    {
+      "symbol": "WIPRO",
+      "close": 195.4,
+      "sector": "Information Technology",
+      "ccr": 0.83,
+      "debt_equity": 0.22,
+      "return_3m": -24.8,
+      "return_1w": -2.8,
+      "defensive_score": 41.6,
+      "atr14": 5.4,
+      "target_high": 211.6,
+      "stop_loss": 184.6
+    },
+    {
+      "symbol": "INFY",
+      "close": 1308.4,
+      "sector": "Information Technology",
+      "ccr": 0.82,
+      "debt_equity": 0.11,
+      "return_3m": -19.0,
+      "return_1w": 0.6,
+      "defensive_score": 40.9,
+      "atr14": 39.96,
+      "target_high": 1428.29,
+      "stop_loss": 1228.47
+    }
+  ],
   "bearish": []
 }
