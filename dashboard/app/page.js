@@ -36,7 +36,7 @@ export default function Dashboard() {
   const stats = data.pipeline_stats || {};
 
   const bullish = (data.bullish || [])
-    .sort((a, b) => (b.adj_confidence || b.defensive_score || b.confidence || 0) - (a.adj_confidence || a.defensive_score || a.confidence || 0))
+    .sort((a, b) => (b.adj_confidence || b.bullish_score || b.confidence || 0) - (a.adj_confidence || a.bullish_score || a.confidence || 0))
     .slice(0, MAX_DISPLAY);
 
   const bearish = (data.bearish || [])
@@ -129,7 +129,7 @@ function MacroCard({ label, value, change, positive }) {
 }
 
 function BullishCard({ stock, rank, regimeScalar, regimeName }) {
-  const confidence = Math.min(100, stock.adj_confidence || stock.defensive_score || stock.confidence || 0);
+  const confidence = Math.min(100, stock.adj_confidence || stock.bullish_score || stock.confidence || 0);
   return (
     <div className="signal-card">
       <div className="card-content">

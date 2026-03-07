@@ -8,8 +8,8 @@ Stage 1C: Point-in-Time Earnings Gate (QoQ Sales > 0%, 2Q EPS > 10%)
 Stage 2:  Multi-Factor Ranking (5 factors, regime-weighted)
 Stage 3:  Macro & Regime Overlay (exposure scalar + VIX-adaptive stops)
 
-In BEAR regime, bullish list uses defensive rotation candidates (low-debt,
-high-quality stocks from defensive sectors like FMCG, Pharma, IT).
+In BEAR regime, bullish list uses bullish_candidates() from bearish.py —
+quality stocks with clean books, positive 3-6 month momentum, and relative strength.
 
 Output: Two ranked lists — bullish candidates and bearish candidates —
 with confidence scores, price targets, and supporting metrics.
@@ -24,7 +24,7 @@ import numpy as np
 from .forensic import forensic_pass, forensic_quality_score, beneish_m_score, cash_conversion_ratio
 from .factors import mansfield_rs, delivery_conviction, volatility_adjusted_momentum, earnings_revision_proxy
 from .regime import get_regime, get_macro_snapshot
-from .bearish import bearish_candidates, defensive_rotation_candidates
+from .bearish import bearish_candidates, bullish_candidates as bear_bullish_candidates
 from .portfolio import compute_atr14
 from .price_targets import compute_price_targets
 
@@ -62,7 +62,7 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
 
     Returns:
         Dict with keys:
-            bullish, bearish, defensive, regime_name, regime_scalar,
+            bullish, bearish, regime_name, regime_scalar,
             macro_snapshot, pipeline_stats, factor_weights
     """
     pledge_data = pledge_data or {}
@@ -90,27 +90,30 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
         'high_vix_mode': high_vix,
     }
 
-    # ── BEAR REGIME: Defensive rotation instead of normal pipeline (PDF p.11) ──
+    # ── BEAR REGIME: Bullish candidates (quality + momentum) instead of full pipeline ──
     if regime_name == 'BEAR':
-        logger.info("BEAR regime: running defensive rotation instead of normal pipeline")
-        defensive = defensive_rotation_candidates(ohlcv_data, fundamentals, sector_map)
-        bear_candidates = bearish_candidates(
+        logger.info("BEAR regime: running bullish candidate scan (3-6 month targets)")
+        bull_picks = bear_bullish_candidates(
+            ohlcv_data, fundamentals, sector_map,
+            benchmark_df=regime_data.get('nifty_df', pd.DataFrame())
+        )
+        bear_picks = bearish_candidates(
             ohlcv_data, fundamentals,
             benchmark_df=regime_data.get('nifty_df', pd.DataFrame()),
             sector_map=sector_map
         )
 
-        # Enrich defensive candidates with target, stop_loss, atr14
-        if isinstance(defensive, pd.DataFrame) and not defensive.empty:
-            for idx, row in defensive.iterrows():
+        # Enrich bullish candidates with target, stop_loss, atr14
+        if isinstance(bull_picks, pd.DataFrame) and not bull_picks.empty:
+            for idx, row in bull_picks.iterrows():
                 symbol = row['symbol']
                 ohlcv = ohlcv_data.get(symbol, pd.DataFrame())
                 if not ohlcv.empty:
                     atr14 = compute_atr14(ohlcv)
                     targets = compute_price_targets(symbol, ohlcv, atr14)
-                    defensive.loc[idx, 'atr14'] = round(atr14, 2)
-                    defensive.loc[idx, 'target_high'] = targets.get('target_high', 0)
-                    defensive.loc[idx, 'stop_loss'] = targets.get('stop_loss', 0)
+                    bull_picks.loc[idx, 'atr14'] = round(atr14, 2)
+                    bull_picks.loc[idx, 'target_high'] = targets.get('target_high', 0)
+                    bull_picks.loc[idx, 'stop_loss'] = targets.get('stop_loss', 0)
 
         fii_data = _extract_fii_data(regime_data)
         macro = get_macro_snapshot(
@@ -119,11 +122,10 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
             regime_data.get('usdinr_df', pd.DataFrame()),
             fii_data
         )
-        logger.info(f"BEAR pipeline: {len(defensive)} defensive, {len(bear_candidates)} bearish")
+        logger.info(f"BEAR pipeline: {len(bull_picks)} bullish, {len(bear_picks)} bearish")
         return {
-            'bullish': defensive,          # In BEAR: defensive-sector stocks shown as bullish
-            'bearish': bear_candidates,
-            'defensive': defensive,
+            'bullish': bull_picks,
+            'bearish': bear_picks,
             'regime_name': regime_name,
             'regime_scalar': regime_scalar,
             'macro_snapshot': macro,
@@ -278,7 +280,6 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
     return {
         'bullish': bullish,
         'bearish': bearish,
-        'defensive': pd.DataFrame(),
         'regime_name': regime_name,
         'regime_scalar': regime_scalar,
         'macro_snapshot': macro,
@@ -343,7 +344,6 @@ def _empty_result(regime_name, regime_scalar, regime_data):
     return {
         'bullish': pd.DataFrame(),
         'bearish': pd.DataFrame(),
-        'defensive': pd.DataFrame(),
         'regime_name': regime_name,
         'regime_scalar': regime_scalar,
         'macro_snapshot': get_macro_snapshot(

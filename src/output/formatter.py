@@ -76,7 +76,7 @@ def format_telegram_report(result: dict) -> str:
         if isinstance(bullish, pd.DataFrame) and not bullish.empty:
             top_n = bullish.head(TELEGRAM_TOP_N)
             for i, (_, row) in enumerate(top_n.iterrows(), 1):
-                confidence = row.get('adj_confidence', row.get('defensive_score', row.get('confidence', 0)))
+                confidence = row.get('adj_confidence', row.get('bullish_score', row.get('confidence', 0)))
                 close = row.get('close', 0)
                 ret_1d = row.get('return_1d', 0)
                 ret_3m = row.get('return_3m', 0)
@@ -210,7 +210,7 @@ def format_discord_report(result: dict) -> str:
     if bullish is not None and isinstance(bullish, pd.DataFrame) and not bullish.empty:
         top_n = bullish.head(DISCORD_TOP_N)
         for i, (_, row) in enumerate(top_n.iterrows(), 1):
-            confidence = row.get('adj_confidence', row.get('defensive_score', row.get('confidence', 0)))
+            confidence = row.get('adj_confidence', row.get('bullish_score', row.get('confidence', 0)))
             close = row.get('close', 0)
             ret_1d = row.get('return_1d', 0)
             ret_3m = row.get('return_3m', 0)
