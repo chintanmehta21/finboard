@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-03-11T22:07:40.906896+05:30",
-  "date": "2026-03-11",
-  "display_date": "Wednesday, 11 Mar 2026",
+  "generated_at": "2026-03-12T22:31:42.928681+05:30",
+  "date": "2026-03-12",
+  "display_date": "Thursday, 12 Mar 2026",
   "sample_mode": false,
   "regime": {
     "name": "BEAR",
@@ -9,14 +9,14 @@
     "exposure_pct": 0
   },
   "macro": {
-    "nifty_close": 22042.3,
-    "nifty_200dma": 23297.64,
-    "nifty_dma_pct": -5.4,
-    "india_vix": 21.1,
-    "usdinr": 91.22,
-    "usdinr_30d_move": -0.34,
-    "fii_net": -6267.0,
-    "dii_net": 4966.0
+    "nifty_close": 21897.5,
+    "nifty_200dma": 23292.59,
+    "nifty_dma_pct": -6.0,
+    "india_vix": 21.5,
+    "usdinr": 92.17,
+    "usdinr_30d_move": 0.14,
+    "fii_net": -7050.0,
+    "dii_net": 7450.0
   },
   "pipeline_stats": {
     "total_universe": 498,
@@ -24,9 +24,9 @@
     "stage_1b_pass": 0,
     "stage_1c_pass": 0,
     "stage_2_scored": 0,
-    "date": "2026-03-11",
+    "date": "2026-03-12",
     "regime": "BEAR",
-    "vix": 21.1,
+    "vix": 21.5,
     "high_vix_mode": true
   },
   "factor_weights": {
@@ -39,20 +39,37 @@
   "bullish": [
     {
       "symbol": "INDUSTOWER",
-      "close": 438.75,
+      "close": 442.05,
       "sector": "Telecommunication",
       "ccr": 1.41,
       "debt_equity": 0.65,
       "m_score": -3.45,
-      "mansfield_rs": 9.7,
-      "return_1d": -1.5,
-      "return_1w": -2.8,
-      "return_3m": 8.5,
-      "return_6m": 26.5,
-      "bullish_score": 68.0,
-      "atr14": 12.64,
-      "target_high": 476.66,
-      "stop_loss": 413.48
+      "mansfield_rs": 11.0,
+      "return_1d": 0.8,
+      "return_1w": -2.2,
+      "return_3m": 7.7,
+      "return_6m": 26.6,
+      "bullish_score": 68.2,
+      "atr14": 12.77,
+      "target_high": 480.36,
+      "stop_loss": 416.51
+    },
+    {
+      "symbol": "NTPCGREEN",
+      "close": 97.65,
+      "sector": "Power",
+      "ccr": 0.75,
+      "debt_equity": 1.05,
+      "m_score": -3.14,
+      "mansfield_rs": 13.5,
+      "return_1d": 12.6,
+      "return_1w": 11.0,
+      "return_3m": 7.4,
+      "return_6m": -5.1,
+      "bullish_score": 42.4,
+      "atr14": 3.29,
+      "target_high": 107.52,
+      "stop_loss": 91.07
     }
   ],
   "bearish": []
