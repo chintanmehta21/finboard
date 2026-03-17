@@ -112,7 +112,7 @@ export default function Dashboard() {
       <footer className="footer">
         Finboard v2.0 | NOT financial advice<br />
         Data updated daily before market opens (Mon-Fri)<br />
-        Made by <a href={CM_HYPERLINK} target="_blank" rel="noopener noreferrer" className="cm-link" aria-label="CM (opens in new tab)">CM{' '}<span aria-hidden="true">{'\u2197'}</span></a>
+        Made by <a href={CM_HYPERLINK} target="_blank" rel="noopener noreferrer" className="cm-link">CM</a>
       </footer>
     </main>
   );
