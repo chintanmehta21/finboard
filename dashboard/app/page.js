@@ -48,7 +48,7 @@ export default function Dashboard() {
       {/* Header */}
       <header className="header">
         <h1>Finboard</h1>
-        <div className="date">Last Updated: {data.display_date || data.date}</div>
+        <div className="date">Last Updated: <time dateTime={data.date}>{data.display_date || data.date}</time></div>
       </header>
 
       {/* Regime Banner — single row, no icon */}
