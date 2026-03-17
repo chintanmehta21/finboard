@@ -534,3 +534,11 @@ body {
     font-size: 18px;
   }
 }
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  .signal-card,
+  .cm-link {
+    transition: none;
+  }
+}
