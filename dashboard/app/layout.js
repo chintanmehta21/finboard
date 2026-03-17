@@ -10,6 +10,11 @@ const montserrat = Montserrat({
 export const metadata = {
   title: 'FinBoard — Market Signals',
   description: 'Daily quantitative signal dashboard for NSE 500 stocks',
+  openGraph: {
+    title: 'FinBoard — Market Signals',
+    description: 'Daily quantitative signal dashboard for NSE 500 stocks',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({ children }) {
