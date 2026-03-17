@@ -27,7 +27,7 @@ export default function Dashboard() {
   }, []);
 
   if (error) return <NoDataView message={error} />;
-  if (!data) return <div className="loading">Loading signals...</div>;
+  if (!data) return <div className="loading" role="status" aria-live="polite">Loading signals...</div>;
 
   const regime = data.regime || {};
   const regimeKey = regime.name || 'SIDEWAYS';
