@@ -288,6 +288,12 @@ body {
   text-decoration: underline;
 }
 
+/* Focus styles for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
 /* Loading */
 .loading {
   text-align: center;
