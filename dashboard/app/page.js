@@ -44,7 +44,7 @@ export default function Dashboard() {
     .slice(0, MAX_DISPLAY);
 
   return (
-    <div className="dashboard">
+    <main className="dashboard">
       {/* Header */}
       <header className="header">
         <h1>Finboard</h1>
@@ -114,7 +114,7 @@ export default function Dashboard() {
         Data updated daily before market opens (Mon-Fri)<br />
         Made by <a href={CM_HYPERLINK} target="_blank" rel="noopener noreferrer" className="cm-link">CM</a>
       </footer>
-    </div>
+    </main>
   );
 }
 
@@ -194,7 +194,7 @@ function BearishCard({ stock, rank }) {
 
 function NoDataView({ message }) {
   return (
-    <div className="dashboard">
+    <main className="dashboard">
       <header className="header">
         <h1>Finboard</h1>
       </header>
@@ -203,7 +203,7 @@ function NoDataView({ message }) {
         <p style={{ fontSize: 13 }}>{message}</p>
         <p style={{ fontSize: 13, marginTop: 8 }}>The pipeline runs daily before market opens (Mon-Fri).</p>
       </div>
-    </div>
+    </main>
   );
 }
 
