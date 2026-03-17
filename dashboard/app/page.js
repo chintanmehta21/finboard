@@ -198,7 +198,7 @@ function NoDataView({ message }) {
       <header className="header">
         <h1>Finboard</h1>
       </header>
-      <div style={{ textAlign: 'center', padding: 64, color: 'var(--text-secondary)' }}>
+      <div role="alert" style={{ textAlign: 'center', padding: 64, color: 'var(--text-secondary)' }}>
         <p style={{ fontSize: 18, marginBottom: 12 }}>No signal data available yet</p>
         <p style={{ fontSize: 13 }}>{message}</p>
         <p style={{ fontSize: 13, marginTop: 8 }}>The pipeline runs daily before market opens (Mon-Fri).</p>
