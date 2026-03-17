@@ -141,8 +141,8 @@ function BullishCard({ stock, rank, regimeScalar, regimeName }) {
         <div className="metrics">
           <div><div className="metric-label">CMP</div>{'\u20B9'}{fmt(stock.close)}</div>
           {stock.return_1d != null && <div><div className="metric-label">Today</div><span className={stock.return_1d > 0 ? 'positive' : 'negative'}>{stock.return_1d > 0 ? '+' : ''}{(stock.return_1d || 0).toFixed(1)}%</span></div>}
-          {stock.return_3m != null && <div><div className="metric-label">3M Ret</div><span className={stock.return_3m > 0 ? 'positive' : 'negative'}>{(stock.return_3m || 0).toFixed(1)}%</span></div>}
-          {stock.return_1w != null && <div><div className="metric-label">1W Ret</div><span className={stock.return_1w > 0 ? 'positive' : 'negative'}>{(stock.return_1w || 0).toFixed(1)}%</span></div>}
+          {stock.return_3m != null && <div><div className="metric-label">3M Ret</div><span className={stock.return_3m > 0 ? 'positive' : 'negative'}>{stock.return_3m > 0 ? '+' : ''}{(stock.return_3m || 0).toFixed(1)}%</span></div>}
+          {stock.return_1w != null && <div><div className="metric-label">1W Ret</div><span className={stock.return_1w > 0 ? 'positive' : 'negative'}>{stock.return_1w > 0 ? '+' : ''}{(stock.return_1w || 0).toFixed(1)}%</span></div>}
           {stock.target_high ? <div><div className="metric-label">Target</div>{'\u20B9'}{fmt(stock.target_high)}</div> : null}
           {stock.stop_loss ? <div><div className="metric-label">S/L</div>{'\u20B9'}{fmt(stock.stop_loss)}</div> : null}
           {stock.atr14 ? <div><div className="metric-label">ATR14</div>{'\u20B9'}{fmt(stock.atr14)}</div> : null}
@@ -176,8 +176,8 @@ function BearishCard({ stock, rank }) {
         <div className="metrics">
           <div><div className="metric-label">CMP</div>{'\u20B9'}{fmt(stock.close)}</div>
           {stock.return_1d != null && <div><div className="metric-label">Today</div><span className={stock.return_1d > 0 ? 'positive' : 'negative'}>{stock.return_1d > 0 ? '+' : ''}{(stock.return_1d || 0).toFixed(1)}%</span></div>}
-          {stock.return_3m != null && <div><div className="metric-label">3M Ret</div><span className={stock.return_3m > 0 ? 'positive' : 'negative'}>{(stock.return_3m || 0).toFixed(1)}%</span></div>}
-          {stock.return_1w != null && <div><div className="metric-label">1W Ret</div><span className={stock.return_1w > 0 ? 'positive' : 'negative'}>{(stock.return_1w || 0).toFixed(1)}%</span></div>}
+          {stock.return_3m != null && <div><div className="metric-label">3M Ret</div><span className={stock.return_3m > 0 ? 'positive' : 'negative'}>{stock.return_3m > 0 ? '+' : ''}{(stock.return_3m || 0).toFixed(1)}%</span></div>}
+          {stock.return_1w != null && <div><div className="metric-label">1W Ret</div><span className={stock.return_1w > 0 ? 'positive' : 'negative'}>{stock.return_1w > 0 ? '+' : ''}{(stock.return_1w || 0).toFixed(1)}%</span></div>}
           <div><div className="metric-label">M-Score</div><span className="negative">{stock.m_score}</span></div>
           <div><div className="metric-label">CCR</div>{stock.ccr}</div>
           <div><div className="metric-label">RS</div>{stock.mansfield_rs}</div>
