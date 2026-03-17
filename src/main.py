@@ -10,6 +10,9 @@ Entry point for the daily analysis pipeline. Coordinates:
 Runs daily via GitHub Actions at 9:00 PM IST (Mon-Fri),
 after market close (3:30 PM IST). Analyzes today's trading
 data so signals reflect the current day's price action.
+
+The run_analysis() function is the single entry point for analysis —
+used by the daily cron, system tests, and any future consumer.
 """
 
 import sys
@@ -19,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+import pandas as pd
 import pytz
 
 from src.config import SYSTEM_NAME, SYSTEM_FULL_NAME
@@ -48,6 +52,196 @@ def _is_fyers_ready() -> bool:
     return bool(totp)
 
 
+# ── Data Loading ─────────────────────────────────────────────────────
+
+def _load_live_data(target_date: date = None) -> dict:
+    """
+    Load all data from live Fyers API + NSE sources.
+
+    Returns a standardized data dict consumed by run_full_pipeline().
+    If target_date is set, slices all data to that date.
+    """
+    # Step 1: Authenticate
+    logger.info("STEP 1: Fyers Authentication")
+    from src.auth.token_manager import get_fyers_instance
+    fyers = get_fyers_instance()
+    logger.info("Fyers authentication successful")
+
+    # Step 2: Load universe
+    logger.info("STEP 2: Loading NSE 500 universe")
+    from src.data.universe import load_universe, get_sector_map
+    symbols = load_universe()
+    sector_map = get_sector_map()
+    logger.info(f"Universe loaded: {len(symbols)} symbols")
+
+    # Step 3: Fetch market data
+    logger.info("STEP 3: Fetching market data")
+
+    from src.data.fyers_client import fetch_all_ohlcv, fetch_index_data
+    index_data = fetch_index_data(fyers, years=2)
+    ohlcv_data = fetch_all_ohlcv(fyers, symbols, years=2)
+    logger.info(f"OHLCV data: {len(ohlcv_data)}/{len(symbols)} symbols")
+
+    # Slice to target date if specified
+    if target_date is not None:
+        logger.info(f"Slicing data to target date: {target_date}")
+        ohlcv_data = _slice_ohlcv(ohlcv_data, target_date)
+        index_data = _slice_index(index_data, target_date)
+        logger.info(f"Post-slice OHLCV: {len(ohlcv_data)} symbols")
+
+    # Bhavcopy
+    from src.data.nse_bhavcopy import fetch_bhavcopy
+    last_trading_date = _get_last_trading_date(ohlcv_data)
+    logger.info(f"Last trading date detected: {last_trading_date}")
+
+    bhavcopy_df = fetch_bhavcopy(last_trading_date, symbols=list(ohlcv_data.keys()))
+
+    if bhavcopy_df is None or bhavcopy_df.empty:
+        logger.warning(
+            f"Bhavcopy unavailable for {last_trading_date} "
+            f"— likely market holiday"
+        )
+        _send_holiday_notifications()
+        raise RuntimeError(f"Bhavcopy unavailable for {last_trading_date} (market holiday)")
+
+    logger.info(f"Bhavcopy: {len(bhavcopy_df)} records")
+
+    # Parallel fetch
+    logger.info("STEP 3d-f: Parallel fetching (FII/DII, fundamentals, pledge)")
+    fii_data, fii_df, fundamentals, pledge_data = _parallel_fetch(
+        list(ohlcv_data.keys())
+    )
+
+    return {
+        'ohlcv_data': ohlcv_data,
+        'bhavcopy_df': bhavcopy_df,
+        'fundamentals': fundamentals,
+        'pledge_data': pledge_data,
+        'sector_map': sector_map,
+        'last_trading_date': last_trading_date,
+        'regime_data': {
+            'nifty_df': index_data.get('nifty_df'),
+            'vix_df': index_data.get('vix_df'),
+            'usdinr_df': index_data.get('usdinr_df'),
+            'fii_df': fii_df,
+        },
+    }
+
+
+def _load_sample_data(target_date: date = None) -> dict:
+    """
+    Load sample data from yfinance + synthetic fallback.
+
+    Returns the same standardized data dict as _load_live_data().
+    If target_date is set, slices all data to that date.
+    """
+    from src.data.sample_data import (
+        generate_sample_ohlcv,
+        generate_sample_index_data,
+        generate_sample_bhavcopy,
+        generate_sample_fundamentals,
+        generate_sample_fii_data,
+        generate_sample_pledge_data,
+        get_sample_sector_map,
+        SAMPLE_SYMBOLS,
+    )
+
+    logger.info("STEP 2: Using sample universe (50 representative NSE stocks)")
+    symbols = SAMPLE_SYMBOLS
+    sector_map = get_sample_sector_map()
+    logger.info(f"Sample universe: {len(symbols)} symbols")
+
+    logger.info("STEP 3: Fetching sample market data (yfinance with synthetic fallback)")
+    ohlcv_data = generate_sample_ohlcv(symbols)
+    logger.info(f"Sample OHLCV: {len(ohlcv_data)} symbols")
+
+    index_data = generate_sample_index_data(ohlcv_data)
+    logger.info("Sample index data generated")
+
+    # Slice to target date if specified
+    if target_date is not None:
+        logger.info(f"Slicing data to target date: {target_date}")
+        ohlcv_data = _slice_ohlcv(ohlcv_data, target_date)
+        index_data = _slice_index(index_data, target_date)
+        logger.info(f"Post-slice OHLCV: {len(ohlcv_data)} symbols")
+
+    last_trading_date = _get_last_trading_date(ohlcv_data)
+    bhavcopy_df = generate_sample_bhavcopy(ohlcv_data, last_trading_date)
+    logger.info(f"Sample bhavcopy: {len(bhavcopy_df)} records")
+
+    fii_df = generate_sample_fii_data()
+    fundamentals = generate_sample_fundamentals(list(ohlcv_data.keys()))
+    pledge_data = generate_sample_pledge_data(list(ohlcv_data.keys()))
+
+    return {
+        'ohlcv_data': ohlcv_data,
+        'bhavcopy_df': bhavcopy_df,
+        'fundamentals': fundamentals,
+        'pledge_data': pledge_data,
+        'sector_map': sector_map,
+        'last_trading_date': last_trading_date,
+        'regime_data': {
+            'nifty_df': index_data.get('nifty_df'),
+            'vix_df': index_data.get('vix_df'),
+            'usdinr_df': index_data.get('usdinr_df'),
+            'fii_df': fii_df,
+        },
+    }
+
+
+# ── Core Analysis ────────────────────────────────────────────────────
+
+def run_analysis(data_source: str = 'auto', target_date: date = None) -> dict:
+    """
+    Run the full analysis pipeline and return the result dict.
+
+    This is THE single entry point for analysis — used by the daily cron,
+    system tests, and any future consumer. When pipeline logic changes,
+    every caller automatically gets the updated behavior.
+
+    Args:
+        data_source: 'auto' (detect Fyers availability), 'sample', or 'live'
+        target_date: If set, slice all data to this date before running pipeline.
+                     None means use the latest available data.
+
+    Returns:
+        Pipeline result dict with keys: bullish, bearish, regime_name,
+        regime_scalar, macro_snapshot, pipeline_stats, factor_weights,
+        last_trading_date, sample_mode.
+    """
+    use_sample = data_source == 'sample' or (data_source == 'auto' and not _is_fyers_ready())
+
+    if use_sample:
+        logger.info("MODE: Sample Data (yfinance + synthetic fallback)")
+        data = _load_sample_data(target_date)
+    else:
+        logger.info("MODE: Live Fyers API")
+        data = _load_live_data(target_date)
+
+    logger.info("Running 5-stage analysis pipeline")
+    from src.analysis.pipeline import run_full_pipeline
+
+    result = run_full_pipeline(
+        ohlcv_data=data['ohlcv_data'],
+        bhavcopy_df=data['bhavcopy_df'],
+        fundamentals=data['fundamentals'],
+        regime_data=data['regime_data'],
+        pledge_data=data['pledge_data'],
+        sector_map=data['sector_map'],
+    )
+
+    result['last_trading_date'] = data['last_trading_date']
+    result['sample_mode'] = use_sample
+
+    logger.info(f"Pipeline result: Regime={result['regime_name']}, "
+                f"Bullish={len(result.get('bullish', []))}, "
+                f"Bearish={len(result.get('bearish', []))}")
+
+    return result
+
+
+# ── Daily Cron Entry Point ───────────────────────────────────────────
+
 def main():
     """Execute the full daily analysis pipeline."""
     IST = pytz.timezone('Asia/Kolkata')
@@ -65,18 +259,15 @@ def main():
     key_status = get_all_keys()
     logger.info(f"Key status: {key_status}")
 
-    use_sample = not _is_fyers_ready()
-    if use_sample:
+    if not _is_fyers_ready():
         logger.warning(
             "FYERS_TOTP_KEY not configured — running with sample/yfinance data. "
             "Set FYERS_TOTP_KEY in Admin/.env to enable live Fyers API."
         )
 
     try:
-        if use_sample:
-            _run_sample_pipeline()
-        else:
-            _run_live_pipeline()
+        result = run_analysis(data_source='auto')
+        _output_results(result)
 
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
@@ -85,82 +276,29 @@ def main():
         sys.exit(1)
 
 
-def _run_live_pipeline():
-    """Run the full pipeline with live Fyers API data."""
-    logger.info("MODE: Live Fyers API")
+# ── Helpers ──────────────────────────────────────────────────────────
 
-    # ── Step 1: Authenticate with Fyers ──
-    logger.info("STEP 1: Fyers Authentication")
-    from src.auth.token_manager import get_fyers_instance
-    fyers = get_fyers_instance()
-    logger.info("Fyers authentication successful")
+def _slice_ohlcv(ohlcv_data: dict, as_of_date: date) -> dict:
+    """Slice OHLCV data to as_of_date, keeping only symbols with >=100 rows."""
+    sliced = {}
+    for symbol, df in ohlcv_data.items():
+        if df.empty:
+            continue
+        cut = df[df.index <= as_of_date]
+        if len(cut) >= 100:
+            sliced[symbol] = cut
+    return sliced
 
-    # ── Step 2: Load universe ──
-    logger.info("STEP 2: Loading NSE 500 universe")
-    from src.data.universe import load_universe, get_sector_map
-    symbols = load_universe()
-    sector_map = get_sector_map()
-    logger.info(f"Universe loaded: {len(symbols)} symbols")
 
-    # ── Step 3: Fetch market data ──
-    logger.info("STEP 3: Fetching market data")
-
-    # 3a: Fetch index data (Nifty 500, VIX, USD/INR) — sequential (Fyers rate-limited)
-    from src.data.fyers_client import fetch_all_ohlcv, fetch_index_data
-    index_data = fetch_index_data(fyers, years=2)
-
-    # 3b: Fetch OHLCV for all stocks — sequential (Fyers rate-limited)
-    ohlcv_data = fetch_all_ohlcv(fyers, symbols, years=2)
-    logger.info(f"OHLCV data: {len(ohlcv_data)}/{len(symbols)} symbols")
-
-    # 3c: Fetch bhavcopy (delivery volume) for last trading day
-    from src.data.nse_bhavcopy import fetch_bhavcopy
-    last_trading_date = _get_last_trading_date(ohlcv_data)
-    logger.info(f"Last trading date detected: {last_trading_date}")
-
-    bhavcopy_df = fetch_bhavcopy(last_trading_date, symbols=list(ohlcv_data.keys()))
-
-    if bhavcopy_df is None or bhavcopy_df.empty:
-        logger.warning(
-            f"Bhavcopy unavailable for {last_trading_date} "
-            f"— likely market holiday"
-        )
-        _send_holiday_notifications()
-        logger.info("Pipeline exiting (market holiday)")
-        return
-
-    logger.info(f"Bhavcopy: {len(bhavcopy_df)} records")
-
-    # 3d-3f: Parallel fetch of independent data sources
-    logger.info("STEP 3d-f: Parallel fetching (FII/DII, fundamentals, pledge)")
-    fii_data, fii_df, fundamentals, pledge_data = _parallel_fetch(
-        list(ohlcv_data.keys())
-    )
-
-    # ── Step 4: Run analysis pipeline ──
-    logger.info("STEP 4: Running 5-stage analysis pipeline")
-    from src.analysis.pipeline import run_full_pipeline
-
-    regime_data = {
-        'nifty_df': index_data.get('nifty_df'),
-        'vix_df': index_data.get('vix_df'),
-        'usdinr_df': index_data.get('usdinr_df'),
-        'fii_df': fii_df,
-    }
-
-    result = run_full_pipeline(
-        ohlcv_data=ohlcv_data,
-        bhavcopy_df=bhavcopy_df,
-        fundamentals=fundamentals,
-        regime_data=regime_data,
-        pledge_data=pledge_data,
-        sector_map=sector_map,
-    )
-
-    # Set last trading date for output modules
-    result['last_trading_date'] = last_trading_date
-
-    _output_results(result)
+def _slice_index(index_data: dict, as_of_date: date) -> dict:
+    """Slice index DataFrames to as_of_date."""
+    sliced = {}
+    for key, df in index_data.items():
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            sliced[key] = df[df.index <= as_of_date]
+        else:
+            sliced[key] = df
+    return sliced
 
 
 def _parallel_fetch(symbols: list[str]) -> tuple:
@@ -214,83 +352,13 @@ def _parallel_fetch(symbols: list[str]) -> tuple:
 
     # Ensure fii_df is at least an empty DataFrame
     if fii_df_result is None:
-        import pandas as pd
         fii_df_result = pd.DataFrame()
 
     return fii_data_result, fii_df_result, fundamentals_result, pledge_result
 
 
-def _run_sample_pipeline():
-    """Run pipeline with sample/yfinance data (when Fyers TOTP unavailable)."""
-    logger.info("MODE: Sample Data (yfinance + synthetic fallback)")
-
-    from src.data.sample_data import (
-        generate_sample_ohlcv,
-        generate_sample_index_data,
-        generate_sample_bhavcopy,
-        generate_sample_fundamentals,
-        generate_sample_fii_data,
-        generate_sample_pledge_data,
-        get_sample_sector_map,
-        SAMPLE_SYMBOLS,
-    )
-
-    # ── Step 2: Use sample universe ──
-    logger.info("STEP 2: Using sample universe (50 representative NSE stocks)")
-    symbols = SAMPLE_SYMBOLS
-    sector_map = get_sample_sector_map()
-    logger.info(f"Sample universe: {len(symbols)} symbols")
-
-    # ── Step 3: Generate/fetch sample data ──
-    logger.info("STEP 3: Fetching sample market data (yfinance with synthetic fallback)")
-
-    ohlcv_data = generate_sample_ohlcv(symbols)
-    logger.info(f"Sample OHLCV: {len(ohlcv_data)} symbols")
-
-    index_data = generate_sample_index_data(ohlcv_data)
-    logger.info("Sample index data generated")
-
-    last_trading_date = _get_last_trading_date(ohlcv_data)
-    bhavcopy_df = generate_sample_bhavcopy(ohlcv_data, last_trading_date)
-    logger.info(f"Sample bhavcopy: {len(bhavcopy_df)} records")
-
-    fii_df = generate_sample_fii_data()
-    fundamentals = generate_sample_fundamentals(list(ohlcv_data.keys()))
-    pledge_data = generate_sample_pledge_data(list(ohlcv_data.keys()))
-
-    # ── Step 4: Run analysis pipeline (same pipeline, sample data) ──
-    logger.info("STEP 4: Running 5-stage analysis pipeline (sample data)")
-    from src.analysis.pipeline import run_full_pipeline
-
-    regime_data = {
-        'nifty_df': index_data.get('nifty_df'),
-        'vix_df': index_data.get('vix_df'),
-        'usdinr_df': index_data.get('usdinr_df'),
-        'fii_df': fii_df,
-    }
-
-    result = run_full_pipeline(
-        ohlcv_data=ohlcv_data,
-        bhavcopy_df=bhavcopy_df,
-        fundamentals=fundamentals,
-        regime_data=regime_data,
-        pledge_data=pledge_data,
-        sector_map=sector_map,
-    )
-
-    # Mark as sample data in the result
-    result['sample_mode'] = True
-    result['last_trading_date'] = last_trading_date
-
-    _output_results(result)
-
-
 def _output_results(result: dict):
     """Send alerts and export data (shared by live and sample pipelines)."""
-    logger.info(f"Pipeline result: Regime={result['regime_name']}, "
-                f"Bullish={len(result.get('bullish', []))}, "
-                f"Bearish={len(result.get('bearish', []))}")
-
     # ── Step 5: Send alerts and export data ──
     logger.info("STEP 5: Sending alerts and exporting data")
 

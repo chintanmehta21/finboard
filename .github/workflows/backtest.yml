@@ -61,7 +61,8 @@ jobs:
           git config user.email "bot@finboard.local"
           git add Tests/backtest/backtest_results/*.csv || true
           git diff --staged --quiet || git commit -m "chore: weekly backtest results $(date +'%Y-%m-%d')"
-          git push || true
+          git pull --rebase origin main || true
+          git push
 
       - name: Upload backtest logs as artifact (14-day retention)
         if: always()

@@ -1,0 +1,255 @@
+{
+  "run_mode": "latest",
+  "data_source": "sample",
+  "target_date": "latest",
+  "run_timestamp": "2026-03-17_195306",
+  "total_checks": 47,
+  "passed": 47,
+  "failed": 0,
+  "pass_rate": 100.0,
+  "status": "PASS",
+  "timings": {
+    "analysis": 34.79,
+    "json_export": 0.03,
+    "formatter": 0.0,
+    "total": 34.82
+  },
+  "warnings": [],
+  "checks": [
+    {
+      "category": "Analysis",
+      "passed": true,
+      "message": "run_analysis() executed without errors"
+    },
+    {
+      "category": "Structure",
+      "passed": true,
+      "message": "Result key 'bullish' present: True"
+    },
+    {
+      "category": "Structure",
+      "passed": true,
+      "message": "Result key 'bearish' present: True"
+    },
+    {
+      "category": "Structure",
+      "passed": true,
+      "message": "Result key 'regime_name' present: True"
+    },
+    {
+      "category": "Structure",
+      "passed": true,
+      "message": "Result key 'regime_scalar' present: True"
+    },
+    {
+      "category": "Structure",
+      "passed": true,
+      "message": "Result key 'macro_snapshot' present: True"
+    },
+    {
+      "category": "Structure",
+      "passed": true,
+      "message": "Result key 'pipeline_stats' present: True"
+    },
+    {
+      "category": "Structure",
+      "passed": true,
+      "message": "Result key 'factor_weights' present: True"
+    },
+    {
+      "category": "Regime",
+      "passed": true,
+      "message": "Regime 'BEAR' is valid (one of {'BEAR', 'DIP', 'SIDEWAYS', 'BULL'})"
+    },
+    {
+      "category": "Regime",
+      "passed": true,
+      "message": "Regime scalar 0.0 is valid (one of {0.0, 0.6, 0.3, 1.0})"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "Macro field 'nifty_close' present: True"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "Macro field 'nifty_200dma' present: True"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "Macro field 'nifty_dma_pct' present: True"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "Macro field 'india_vix' present: True"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "Macro field 'usdinr' present: True"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "Nifty close is positive: 21669.3"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "India VIX in range [5, 80]: 19.8"
+    },
+    {
+      "category": "Macro",
+      "passed": true,
+      "message": "USD/INR in range [60, 120]: 92.38"
+    },
+    {
+      "category": "Pipeline Stats",
+      "passed": true,
+      "message": "Universe size: 51"
+    },
+    {
+      "category": "Pipeline Stats",
+      "passed": true,
+      "message": "Pipeline funnel is monotonically decreasing: [51, 0, 0]"
+    },
+    {
+      "category": "Pipeline Stats",
+      "passed": true,
+      "message": "Stats include regime: BEAR"
+    },
+    {
+      "category": "Factor Weights",
+      "passed": true,
+      "message": "BEAR regime: all weights zero: {'rs': 0.0, 'del': 0.0, 'vam': 0.0, 'for': 0.0, 'rev': 0.0}"
+    },
+    {
+      "category": "Bullish",
+      "passed": true,
+      "message": "Bullish candidates: 4"
+    },
+    {
+      "category": "Bullish",
+      "passed": true,
+      "message": "Bullish count <= 10: 4"
+    },
+    {
+      "category": "Bullish",
+      "passed": true,
+      "message": "Bullish column 'symbol' present: True"
+    },
+    {
+      "category": "Bullish",
+      "passed": true,
+      "message": "Bullish column 'close' present: True"
+    },
+    {
+      "category": "Bullish",
+      "passed": "True",
+      "message": "All bullish close prices positive: True"
+    },
+    {
+      "category": "Bullish",
+      "passed": "True",
+      "message": "Confidence scores (bullish_score) in [0, 100]: True"
+    },
+    {
+      "category": "Bearish",
+      "passed": true,
+      "message": "Bearish candidates: 5"
+    },
+    {
+      "category": "Bearish",
+      "passed": true,
+      "message": "Bearish has 'symbol' column"
+    },
+    {
+      "category": "Bearish",
+      "passed": "True",
+      "message": "All bearish close prices positive: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'generated_at' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'date' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'display_date' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'regime' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'macro' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'pipeline_stats' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'factor_weights' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'bullish' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON key 'bearish' present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON regime.name present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON regime.scalar present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON regime.exposure_pct present: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON bullish is list: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON bearish is list: True"
+    },
+    {
+      "category": "JSON Export",
+      "passed": true,
+      "message": "JSON export successful"
+    },
+    {
+      "category": "Formatter",
+      "passed": true,
+      "message": "Telegram report formatted: 1656 chars"
+    }
+  ]
+}

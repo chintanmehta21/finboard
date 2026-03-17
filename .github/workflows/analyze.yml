@@ -61,7 +61,8 @@ jobs:
           git config user.email "bot@finboard.local"
           git add dashboard/public/data/signals.json || true
           git diff --staged --quiet || git commit -m "chore: update daily signals $(date +'%Y-%m-%d')"
-          git push || true
+          git pull --rebase origin main || true
+          git push
 
       - name: Upload run log as artifact (7-day retention)
         if: always()
