@@ -8,7 +8,7 @@ Four regimes:
 1. STRUCTURAL BULL (100% exposure) — Nifty > 200 DMA, VIX < 16, INR stable
 2. RISK-ON DIP (60% exposure) — Near 200 DMA or RSI oversold, trend intact
 3. VOLATILE SIDEWAYS (30% exposure) — VIX 16-24, oscillating around 200 DMA
-4. BEAR / FII FLIGHT (0% new buys) — Below 200 DMA or VIX > 24 or INR crash
+4. BEAR / FII FLIGHT (10% exposure) — Below 200 DMA or VIX 3d avg > 24 or INR crash
 
 Each regime also shifts factor weights to prioritize appropriate signals.
 """
@@ -87,7 +87,7 @@ def get_regime(nifty_df: pd.DataFrame, vix_df: pd.DataFrame,
     # Nifty below 200 DMA OR INR depreciates > 2% in 30 days OR VIX 3d avg > 24
     if nifty_close < nifty_ma200 or inr_move_30d > 2.0 or vix_3d > 24:
         regime = 'BEAR'
-        logger.info(f"REGIME: {regime} (0% new buys)")
+        logger.info(f"REGIME: {regime} (10% exposure — defensive only)")
         return REGIME_SCALARS[regime], regime, REGIME_WEIGHTS[regime]
 
     # === RISK-ON DIP ===

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Portfolio construction parameters
 RISK_PER_TRADE_PCT = 0.01       # 1% of total capital risked per trade
-ATR_STOP_MULTIPLIER = 2.0       # Stop loss = 2x ATR14 from entry
+ATR_STOP_MULTIPLIER = 3.0       # Stop loss = 3x ATR14 from entry (v0.21; was 2x — now consistent with exit_rules.py)
 MAX_SECTOR_PCT = 0.25           # Max 25% of portfolio in one sector
 MAX_POSITION_PCT = 0.15         # Max 15% of capital in one stock
 MAX_ADT_PCT = 0.02              # Max 2% of stock's 20-day ADT
@@ -148,8 +148,8 @@ def compute_atr14(ohlcv: pd.DataFrame) -> float:
     Compute 14-period Average True Range.
 
     ATR captures the stock's volatility and is used for:
-    - Position sizing (equal rupee risk)
-    - Stop loss placement (2x ATR from entry)
+    - Position sizing (equal rupee risk, sized for 3x ATR stop)
+    - Stop loss placement (3x ATR from entry — see exit_rules.ATR_STOP_MULTIPLIER)
     - Price target projection (3x ATR up)
     """
     if ohlcv.empty or len(ohlcv) < 15:

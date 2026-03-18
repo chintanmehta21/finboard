@@ -102,14 +102,29 @@ def beneish_m_score(f: dict) -> float:
     # Unsustainable hyper-growth precursor
     sgi = sales_t / (sales_t1 + eps)
 
-    # Beneish M-Score formula (5-variable version)
+    # Beneish M-Score — 8-variable model coefficients, available variables only.
+    # GMI, DEPI, SGAI are not available from yfinance; neutralised at 1.0 each.
+    # Adjusted intercept: -4.840 + 0.528*1 + 0.115*1 - 0.172*1 = -4.369
+    #
+    # Correct coefficients (Beneish 1999, Eq. 3):
+    #   DSRI  ×  0.920  — channel stuffing / revenue recognition
+    #   AQI   ×  0.404  — asset quality (capitalising opex)
+    #   SGI   ×  0.892  — unsustainable hyper-growth
+    #   TATA  ×  4.679  — accrual gap (dominant predictor; previous value 0.528 = 9× too small)
+    #   LVGI  × -0.327  — leverage index (negative coefficient, empirically derived;
+    #                      previous value +0.404 had wrong sign AND magnitude)
+    #
+    # v0.22 BUG FIX: Prior version mapped variables to wrong coefficients:
+    # TATA used GMI's 0.528 (9× too small), LVGI used AQI's +0.404 (sign inverted),
+    # AQI used DEPI's 0.115 (3.5× too small). Result: manipulators incorrectly cleared
+    # Stage 1A and rising-leverage companies received lower (safer) M-Scores.
     m_score = (
-        -4.84
+        -4.369
         + 0.920 * dsri
-        + 0.528 * tata
-        + 0.404 * lvgi
+        + 0.404 * aqi
         + 0.892 * sgi
-        + 0.115 * aqi
+        + 4.679 * tata
+        - 0.327 * lvgi
     )
 
     return m_score

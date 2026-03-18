@@ -85,13 +85,13 @@ def check_exit_rules(positions: list[dict],
             triggers.append(fund_exit)
 
         # ── Trigger 3: RISK STOP EXIT ──
-        # Close < entry - 2×ATR14 (tightened 30% if VIX > 20)
+        # Close < entry - 3×ATR14 (tightened 30% → 2.1×ATR14 when VIX > 20)
         risk_exit = _check_risk_stop(current_close, entry_price, atr_at_entry, high_vix)
         if risk_exit:
             triggers.append(risk_exit)
 
         # ── Trigger 4: TIME STOP EXIT ──
-        # Position age > 26 weeks (13 weeks if VIX > 20)
+        # Position age > 20 weeks (10 weeks if VIX > 20)
         time_exit = _check_time_stop(entry_date_str, high_vix)
         if time_exit:
             triggers.append(time_exit)

@@ -259,8 +259,12 @@ def bullish_candidates(ohlcv_data: dict[str, pd.DataFrame],
         # ── Quality gates (must pass all) ──
         if m_score > -2.22:
             continue  # High manipulation risk — skip
-        if ccr < 0.70:
-            continue  # Poor cash conversion — skip
+        # CCR gate: -1.0 is a sentinel meaning "CFO data unavailable" (not a real 0 ratio).
+        # cash_conversion_ratio() returns -1.0 when CFO=0 in yfinance (common for Indian equities).
+        # Don't penalise missing data — only exclude stocks with confirmed poor conversion.
+        # v0.22 BUG FIX: `ccr < 0.70` was excluding CCR=-1.0 stocks (sentinel treated as real value).
+        if ccr != -1.0 and ccr < 0.70:
+            continue  # Poor cash conversion (confirmed) — skip
         if de > 1.5:
             continue  # Too leveraged — skip
 

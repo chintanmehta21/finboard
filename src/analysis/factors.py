@@ -1,14 +1,18 @@
 """
-Stage 2 — Multi-Factor Ranking Engine (5 Factors)
+Stage 2 — Multi-Factor Ranking Engine (4 Factors, v0.21)
 
-Computes 5 uncorrelated factor scores for each stock:
-1. Composite Mansfield RS (25%) — 3-horizon relative strength vs Nifty 500
+Computes 4 uncorrelated factor scores for each stock:
+1. Composite Mansfield RS (35%) — 3-horizon relative strength vs Nifty 500
 2. Delivery Volume Conviction (20%) — 5d/20d delivery % ratio
 3. Volatility-Adjusted Momentum (20%) — 12-1 momentum / 90d volatility
-4. Forensic Quality Score (20%) — CCR + M-Score + LVGI composite
-5. Earnings Revision Breadth (15%) — proxy: price reaction on result days
+4. Earnings Revision Breadth (25%) — proxy: price reaction on result days
+
+Note: Forensic Quality Score (FQ) was removed in v0.21 after IC backtest
+confirmed negative predictive power (-0.17 / -0.23 at 3M/6M horizons).
+FQ is retained as a hard gate in Stage 1A (M-Score, CCR, Pledge).
 
 All factors are normalized to percentile ranks (0-1) before weighting.
+Weights above are BEAR regime; BULL/DIP/SIDEWAYS use different calibration.
 """
 
 import logging

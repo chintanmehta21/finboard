@@ -2,7 +2,7 @@
 Price Target Computation — ATR-Projected Bands & Support/Resistance
 
 Each output stock includes an estimated 4-week price band using:
-(a) ATR-projected high and low from current price (asymmetric: 3x up, 2x stop)
+(a) ATR-projected high and low from current price (3x up, 3x stop — matches exit_rules.py)
 (b) 20-week high/low channel for consolidation context
 
 These are price RANGES for position management, NOT precise predictions.
@@ -33,10 +33,11 @@ def compute_price_targets(symbol: str, ohlcv: pd.DataFrame, atr14: float) -> dic
 
     close = float(ohlcv['close'].iloc[-1])
 
-    # ATR-based band: 3x ATR up, 2x ATR stop (asymmetric for long positions)
-    # Risk:Reward = 3:2 = 1.5:1 minimum (target 3:1 with trailing stops)
+    # ATR-based band: 3x ATR up, 3x ATR stop (symmetric, matches exit_rules.py v0.21)
+    # Risk:Reward = 1:1 minimum (target improves with trailing stops over holding period)
+    # v0.22 FIX: was 2x stop, inconsistent with exit_rules.ATR_STOP_MULTIPLIER = 3.0
     target_high = round(close + 3 * atr14, 2)
-    stop_loss = round(close - 2 * atr14, 2)
+    stop_loss = round(close - 3 * atr14, 2)
 
     # 20-week channel (100 trading days ~ 20 weeks)
     lookback = min(100, len(ohlcv))
