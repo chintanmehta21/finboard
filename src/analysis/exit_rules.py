@@ -7,12 +7,13 @@ ANY single trigger firing = position exits next open.
 Exit Triggers:
 1. TECHNICAL EXIT:  RS < 0 AND price closes below 20-week MA (confirmed breakdown)
 2. FUNDAMENTAL EXIT: QoQ sales drop > 5% in latest reported quarter (PIT)
-3. RISK STOP EXIT:   Close < entry - 2×ATR14 (immediate, non-negotiable)
-4. TIME STOP EXIT:   Position > 26 weeks (~6 months) old, no fresh trigger = stale
+3. RISK STOP EXIT:   Close < entry - 3×ATR14 (immediate, non-negotiable)
+4. TIME STOP EXIT:   Position > 20 weeks (~5 months) old, no fresh trigger = stale
 
-Additionally in high-VIX environment (VIX > 20):
-- Risk stop tightened by 30% (2×ATR becomes 1.4×ATR effectively)
-- Time stop shortened to 13 weeks (~3 months)
+v0.21 research-backed changes:
+- ATR stop widened 2x→3x (2x too tight for 3-6M holding, consensus 2.5-3.5x)
+- Time stop shortened 26→20 weeks (research: 13-16 weeks optimal, 20 = compromise)
+- High-VIX: stop tightened 30% (3×ATR→2.1×ATR), time stop 10 weeks
 
 Output: list of positions with triggered exit rules and reason strings.
 """
@@ -25,10 +26,10 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Exit parameters
-ATR_STOP_MULTIPLIER = 2.0           # 2× ATR14 from entry
-TIME_STOP_WEEKS_NORMAL = 26         # 26 weeks (~6 months) normal
-TIME_STOP_WEEKS_HIGH_VIX = 13       # 13 weeks (~3 months) when VIX > 20
+# Exit parameters (v0.21: research-backed adjustments)
+ATR_STOP_MULTIPLIER = 3.0           # 3× ATR14 from entry (was 2x, too tight for 3-6M)
+TIME_STOP_WEEKS_NORMAL = 20         # 20 weeks (~5 months) normal (was 26)
+TIME_STOP_WEEKS_HIGH_VIX = 10       # 10 weeks (~2.5 months) when VIX > 20 (was 13)
 VIX_HIGH_THRESHOLD = 20             # VIX threshold for tighter stops
 VIX_STOP_TIGHTENING = 0.70          # Multiply stop by this (30% tighter)
 SALES_DROP_EXIT_THRESHOLD = -0.05   # -5% QoQ sales drop triggers exit
@@ -196,10 +197,10 @@ def _check_fundamental_exit(f: dict | None) -> dict | None:
 def _check_risk_stop(current_close: float, entry_price: float,
                      atr_at_entry: float, high_vix: bool) -> dict | None:
     """
-    Risk Stop Exit: Close < Entry - 2×ATR14.
+    Risk Stop Exit: Close < Entry - 3×ATR14.
 
     In high-VIX mode (VIX > 20), stop is tightened by 30%:
-    effective stop = Entry - (2×ATR14 × 0.70) = Entry - 1.4×ATR14
+    effective stop = Entry - (3×ATR14 × 0.70) = Entry - 2.1×ATR14
 
     This is non-negotiable — the hard floor that prevents large losses.
     """
@@ -228,10 +229,10 @@ def _check_risk_stop(current_close: float, entry_price: float,
 
 def _check_time_stop(entry_date_str: str, high_vix: bool) -> dict | None:
     """
-    Time Stop Exit: Position older than 26 weeks (13 weeks if VIX > 20).
+    Time Stop Exit: Position older than 20 weeks (10 weeks if VIX > 20).
 
     Stale positions without fresh catalysts tie up capital.
-    High-VIX shortens to 3 months — faster rotation in volatile markets.
+    High-VIX shortens to ~2.5 months — faster rotation in volatile markets.
     """
     if not entry_date_str:
         return None

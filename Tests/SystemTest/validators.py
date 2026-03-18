@@ -35,7 +35,7 @@ def validate_regime(result: dict) -> list[tuple[bool, str]]:
     ))
 
     scalar = result.get('regime_scalar')
-    valid_scalars = {0.0, 0.3, 0.6, 1.0}
+    valid_scalars = {0.0, 0.1, 0.3, 0.6, 1.0}  # v0.2: BEAR uses 0.1
     checks.append((
         scalar in valid_scalars,
         f"Regime scalar {scalar} is valid (one of {valid_scalars})"
@@ -89,11 +89,12 @@ def validate_pipeline_stats(stats: dict) -> list[tuple[bool, str]]:
         f"Universe size: {stats.get('total_universe', 0)}"
     ))
 
-    # Funnel should be monotonically decreasing
+    # Funnel should be monotonically decreasing (v0.2: includes 1C)
     funnel = [
         stats.get('total_universe', 0),
         stats.get('stage_1a_pass', 0),
         stats.get('stage_1b_pass', 0),
+        stats.get('stage_1c_pass', 0),
     ]
     monotonic = all(funnel[i] >= funnel[i + 1] for i in range(len(funnel) - 1))
     checks.append((
@@ -113,12 +114,13 @@ def validate_factor_weights(weights: dict, regime_name: str) -> list[tuple[bool,
     """Validate factor weights are consistent with regime."""
     checks = []
 
+    # v0.21: FQ ('for') removed from factor weights — negative IC confirmed
     if regime_name == 'BEAR':
-        # BEAR regime has zero weights (defensive rotation)
-        all_zero = all(v == 0 for v in weights.values())
-        checks.append((all_zero, f"BEAR regime: all weights zero: {weights}"))
+        expected_keys = {'rs', 'del', 'vam', 'rev'}
+        present = expected_keys.issubset(set(weights.keys()))
+        checks.append((present, f"BEAR regime: factor weight keys present: {set(weights.keys())}"))
     else:
-        expected_keys = {'rs', 'del', 'vam', 'for', 'rev'}
+        expected_keys = {'rs', 'del', 'vam', 'rev'}
         present = expected_keys.issubset(set(weights.keys()))
         checks.append((present, f"Factor weight keys present: {set(weights.keys())}"))
 

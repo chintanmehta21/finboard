@@ -1,17 +1,16 @@
 """
-Bearish & Bullish Candidate Identification
+Bearish & Bullish Candidate Identification (v0.2)
 
-Bullish Candidates (Bear/All Regime):
-  - Stocks with strong fundamentals suitable for 3-6 month holding
-  - High CFO/EBITDA (cash generative), low debt, clean books
-  - Positive momentum (3M/6M returns), positive Mansfield RS
-  - Scored on quality + momentum composite for medium-term upside
+Bearish Candidates — predict 3-6 month DECLINE:
+  - Technical weakness: below 200 DMA, negative momentum, negative RS
+  - Accounting risk: M-Score > -2.22, CCR shortfall
+  - Fundamental deterioration: revenue decline, negative FCF
+  - Leverage risk: LVGI rising, high D/E
+  - Scoring weighted for 3-6M decline prediction
 
-Bearish Candidates (Short/Inverse Model):
-  - M-Score > -1.5 (high manipulation probability)
-  - Negative Mansfield RS (underperforming benchmark)
-  - Rising LVGI (leverage increasing) + falling CFO/EBITDA
-  - NOT a mirror of the long model — separate criteria
+Bullish Candidates (BEAR regime):
+  - Quality stocks with clean books, positive 3-6 month momentum
+  - Scored on quality + momentum + relative strength composite
 """
 
 import logging
@@ -24,10 +23,29 @@ from .factors import earnings_revision_proxy, mansfield_rs
 
 logger = logging.getLogger(__name__)
 
-# Short candidate thresholds
-SHORT_M_SCORE_THRESHOLD = -1.5  # Above this = high manipulation risk
-SHORT_RS_THRESHOLD = 0          # Must be negative (underperforming)
+# Bearish candidate thresholds (v0.2 — relaxed for 3-6M prediction)
+# M-Score is now a scoring component, not a hard gate
+SHORT_RS_THRESHOLD = 0          # Must be underperforming benchmark OR have negative momentum
 NEG_REVISION_THRESHOLD = 0.3    # Below this = negative earnings momentum (proxy)
+
+
+def _compute_mrs_single(ohlcv: pd.DataFrame, benchmark_df: pd.DataFrame,
+                        window: int = 91) -> float:
+    """Compute single-window Mansfield RS. Returns 0.0 on failure."""
+    if benchmark_df is None or benchmark_df.empty or ohlcv.empty:
+        return 0.0
+    try:
+        stock_close = ohlcv['close']
+        bench_close = benchmark_df['close']
+        common = stock_close.index.intersection(bench_close.index)
+        if len(common) < window:
+            return 0.0
+        rp = stock_close.loc[common] / bench_close.loc[common]
+        rp_ma = rp.rolling(window).mean()
+        val = float(((rp.iloc[-1] / rp_ma.iloc[-1]) - 1) * 100)
+        return val if np.isfinite(val) else 0.0
+    except Exception:
+        return 0.0
 
 
 def bearish_candidates(ohlcv_data: dict[str, pd.DataFrame],
@@ -35,85 +53,135 @@ def bearish_candidates(ohlcv_data: dict[str, pd.DataFrame],
                        benchmark_df: pd.DataFrame = None,
                        sector_map: dict[str, str] = None) -> pd.DataFrame:
     """
-    Identify bearish/short candidates based on deteriorating fundamentals.
+    Identify bearish candidates predicted to DECLINE over 3-6 months.
 
-    Targets stocks with:
-    - M-Score > -1.5 (high manipulation probability)
-    - Negative Mansfield RS (underperforming benchmark)
-    - Rising LVGI (leverage increasing QoQ)
-    - Falling CFO/EBITDA (cash conversion deteriorating)
+    v0.2 scoring (4 components, weighted for 3-6M decline prediction):
+      - Technical weakness (35%): RS, DMA, momentum — strongest decline predictors
+      - Accounting risk (25%): M-Score, CCR shortfall
+      - Fundamental deterioration (25%): revenue decline, negative FCF
+      - Leverage risk (15%): LVGI rising, high D/E
 
-    Args:
-        ohlcv_data: Dict of symbol -> OHLCV DataFrame
-        fundamentals: Dict of symbol -> fundamentals dict
-        benchmark_df: Nifty 500 daily close for RS calculation
+    Soft gates: must have at least one bearish signal (technical OR fundamental)
+    to qualify. M-Score is a scoring component, not a hard exclusion gate.
 
     Returns:
-        DataFrame of bearish candidates with scores and metrics
+        DataFrame of bearish candidates (top 10) sorted by bearish_score
     """
     records = []
 
     for symbol, ohlcv in ohlcv_data.items():
+        if ohlcv.empty or len(ohlcv) < 63:
+            continue
+
         f = fundamentals.get(symbol)
         if not f:
             continue
 
+        # ── Compute all signals ──
         m_score = beneish_m_score(f)
         ccr = cash_conversion_ratio(f)
+        mrs = _compute_mrs_single(ohlcv, benchmark_df, window=91)
 
-        # Must have high manipulation probability
-        if m_score < SHORT_M_SCORE_THRESHOLD:
-            continue
+        # Returns
+        close = float(ohlcv['close'].iloc[-1])
+        ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) * 100 if len(ohlcv) >= 63 else 0
+        ret_6m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-126] - 1) * 100 if len(ohlcv) >= 126 else 0
 
-        # Compute Mansfield RS (simplified for bearish scan)
-        mrs = 0.0
-        if benchmark_df is not None and not benchmark_df.empty and not ohlcv.empty:
-            try:
-                stock_close = ohlcv['close']
-                bench_close = benchmark_df['close']
-                common = stock_close.index.intersection(bench_close.index)
-                if len(common) >= 91:
-                    rp = stock_close.loc[common] / bench_close.loc[common]
-                    rp_ma = rp.rolling(91).mean()
-                    mrs = float(((rp / rp_ma) - 1) * 100).real
-                    if pd.isna(mrs):
-                        mrs = 0.0
-            except Exception:
-                mrs = 0.0
-
-        # Must be underperforming benchmark
-        if mrs > SHORT_RS_THRESHOLD:
-            continue
+        # 200 DMA check
+        dma_200 = ohlcv['close'].tail(200).mean() if len(ohlcv) >= 200 else ohlcv['close'].mean()
+        below_200dma = close < dma_200
+        dma_pct = (close / dma_200 - 1) * 100
 
         # LVGI trend (leverage change)
         debt_t = f.get('debt_t', 0) or 0
         debt_t1 = f.get('debt_t1', 0) or 0
         ta = f.get('total_assets', 0) or 1e-9
         lvgi = (debt_t / ta) / (debt_t1 / ta + 1e-9) if debt_t1 > 0 else 1.0
-        lvgi_rising = lvgi > 1.05  # Leverage increasing > 5% QoQ
+        lvgi_rising = lvgi > 1.05
 
-        # Negative revision proxy (PDF p.8 — bearish model uses inverse of
-        # the earnings revision proxy: stocks with predominantly negative
-        # big-move days indicate analyst downgrades / negative surprises)
+        # D/E ratio
+        de = f.get('debt_equity', 0) or 0
+
+        # Revenue deterioration
+        sales_t = f.get('sales_t')
+        sales_t1 = f.get('sales_t1')
+        qoq_rev_decline = False
+        qoq_change = 0.0
+        if sales_t is not None and sales_t1 is not None and sales_t1 > 0:
+            qoq_change = (sales_t - sales_t1) / abs(sales_t1)
+            qoq_rev_decline = qoq_change < -0.05  # > 5% revenue decline
+
+        # Revision proxy
         rev_proxy = earnings_revision_proxy(ohlcv)
-        neg_revision = rev_proxy < NEG_REVISION_THRESHOLD  # Low score = negative revisions
+        neg_revision = rev_proxy < NEG_REVISION_THRESHOLD
 
-        # Score: higher = stronger bearish signal
-        bearish_score = 0.0
-        bearish_score += min((m_score + 2.22) * 20, 40)  # M-Score component (0-40)
-        bearish_score += max((0.80 - ccr) * 50, 0)       # CCR shortfall (0-30)
-        bearish_score += abs(mrs) * 2                     # RS weakness (0-20)
-        if lvgi_rising:
-            bearish_score += 5                            # LVGI bonus
+        # Volatility trend (rising vol = bearish)
+        if len(ohlcv) >= 90:
+            log_ret = np.log(ohlcv['close'] / ohlcv['close'].shift(1)).dropna()
+            vol_recent = log_ret.tail(30).std() * np.sqrt(252) if len(log_ret) >= 30 else 0
+            vol_prior = log_ret.tail(90).head(60).std() * np.sqrt(252) if len(log_ret) >= 90 else vol_recent
+            vol_rising = vol_recent > vol_prior * 1.2 if vol_prior > 0 else False
+        else:
+            vol_recent = 0
+            vol_rising = False
+
+        # ── Soft gate: must have at least one bearish signal ──
+        has_technical_weakness = (mrs < 0) or below_200dma or (ret_3m < -5) or (ret_6m < -10)
+        has_fundamental_issue = (
+            (np.isfinite(m_score) and m_score > -2.22) or
+            (ccr >= 0 and ccr < 0.70) or
+            qoq_rev_decline or
+            lvgi_rising
+        )
+        if not (has_technical_weakness or has_fundamental_issue):
+            continue
+
+        # ── Score: 4-component model (0-100) ──
+        # Technical weakness (35 pts max)
+        tech_score = 0.0
+        if mrs < 0:
+            tech_score += min(abs(mrs) * 1.5, 12)       # RS weakness (0-12)
+        if below_200dma:
+            tech_score += min(abs(dma_pct) * 0.5, 8)     # Distance below 200DMA (0-8)
+        if ret_3m < 0:
+            tech_score += min(abs(ret_3m) * 0.3, 8)      # 3M decline (0-8)
+        if vol_rising:
+            tech_score += 4                               # Rising volatility
         if neg_revision:
-            bearish_score += 5                            # Negative revision bonus
+            tech_score += 3                               # Negative revision proxy
+        tech_score = min(tech_score, 35)
 
-        bearish_score = min(bearish_score, 100)
+        # Accounting risk (25 pts max)
+        acct_score = 0.0
+        if np.isfinite(m_score) and m_score > -2.22:
+            acct_score += min((m_score + 2.22) * 12, 15)  # M-Score risk (0-15)
+        if 0 <= ccr < 0.80:
+            acct_score += min((0.80 - ccr) * 25, 10)      # CCR shortfall (0-10)
+        acct_score = min(acct_score, 25)
 
-        close = ohlcv['close'].iloc[-1] if not ohlcv.empty else 0
+        # Fundamental deterioration (25 pts max)
+        fund_score = 0.0
+        if qoq_rev_decline:
+            fund_score += min(abs(qoq_change) * 50, 12)   # Revenue decline severity (0-12)
+        net_inc = f.get('net_income', 0) or 0
+        if net_inc < 0:
+            fund_score += 8                                # Negative earnings
+        if neg_revision:
+            fund_score += 5                                # Analyst downgrade proxy
+        fund_score = min(fund_score, 25)
+
+        # Leverage risk (15 pts max)
+        lev_score = 0.0
+        if lvgi_rising:
+            lev_score += min((lvgi - 1.0) * 30, 8)        # LVGI magnitude (0-8)
+        if de > 1.5:
+            lev_score += min((de - 1.5) * 5, 7)           # High D/E (0-7)
+        lev_score = min(lev_score, 15)
+
+        bearish_score = min(tech_score + acct_score + fund_score + lev_score, 100)
+
         ret_1d = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-2] - 1) * 100 if len(ohlcv) >= 2 else 0
         ret_1w = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-5] - 1) * 100 if len(ohlcv) >= 5 else 0
-        ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) * 100 if len(ohlcv) >= 63 else 0
 
         records.append({
             'symbol': symbol,
@@ -121,16 +189,22 @@ def bearish_candidates(ohlcv_data: dict[str, pd.DataFrame],
             'close': round(close, 2),
             'return_1d': round(ret_1d, 1),
             'return_1w': round(ret_1w, 1),
-            'return_3m': round(ret_3m, 1),
+            'return_3m': round(float(ret_3m), 1),
+            'return_6m': round(float(ret_6m), 1),
             'sector': (sector_map or {}).get(symbol, ''),
-            'm_score': round(m_score, 2),
+            'm_score': round(m_score, 2) if np.isfinite(m_score) else None,
             'ccr': round(ccr, 2),
             'mansfield_rs': round(mrs, 1),
+            'below_200dma': below_200dma,
+            'dma_pct': round(float(dma_pct), 1),
             'lvgi': round(lvgi, 2),
             'lvgi_rising': lvgi_rising,
+            'de_ratio': round(de, 2),
+            'qoq_rev_change': round(float(qoq_change * 100), 1) if qoq_change else 0,
             'neg_revision': neg_revision,
             'revision_proxy': round(rev_proxy, 3),
-            'signal': 'SHORT' if bearish_score > 60 else 'CAUTION',
+            'vol_rising': vol_rising,
+            'signal': 'SHORT' if bearish_score > 50 else 'CAUTION',
         })
 
     if not records:
@@ -198,25 +272,13 @@ def bullish_candidates(ohlcv_data: dict[str, pd.DataFrame],
         ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) * 100 if len(ohlcv) >= 63 else 0
         ret_6m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-126] - 1) * 100 if len(ohlcv) >= 126 else 0
 
-        # Must have at least one positive medium-term return (3M or 6M)
-        if ret_3m <= 0 and ret_6m <= 0:
+        # Must show relative resilience: at least one return > -10%
+        # In BEAR markets, requiring positive returns would exclude everything
+        if ret_3m < -10 and ret_6m < -10:
             continue
 
         # ── Mansfield Relative Strength vs benchmark ──
-        mrs = 0.0
-        if benchmark_df is not None and not benchmark_df.empty:
-            try:
-                stock_close = ohlcv['close']
-                bench_close = benchmark_df['close']
-                common = stock_close.index.intersection(bench_close.index)
-                if len(common) >= 91:
-                    rp = stock_close.loc[common] / bench_close.loc[common]
-                    rp_ma = rp.rolling(91).mean()
-                    mrs = float(((rp.iloc[-1] / rp_ma.iloc[-1]) - 1) * 100)
-                    if pd.isna(mrs):
-                        mrs = 0.0
-            except Exception:
-                mrs = 0.0
+        mrs = _compute_mrs_single(ohlcv, benchmark_df, window=91)
 
         # ── Composite bullish score (0-100) ──
         # Quality component (40 pts max): CCR quality + M-Score safety

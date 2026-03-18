@@ -177,9 +177,16 @@ def volatility_adjusted_momentum(ohlcv: pd.DataFrame) -> float:
         if vol_90d <= 0 or np.isnan(vol_90d):
             return 0.0
 
+        # v0.21: Volatility floor at 10% annualized to prevent
+        # near-zero vol inflating VAM for illiquid/stale stocks
+        vol_90d = max(vol_90d, 0.10)
+
         vam = momentum_12_1 / vol_90d
 
-        return float(vam) if np.isfinite(vam) else 0.0
+        # v0.21: Winsorize at ±3 to prevent extreme outliers
+        vam = max(min(float(vam), 3.0), -3.0)
+
+        return vam if np.isfinite(vam) else 0.0
 
     except Exception as e:
         logger.debug(f"VAM computation error: {e}")

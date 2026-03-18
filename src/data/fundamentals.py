@@ -111,10 +111,16 @@ def get_fundamentals(symbol: str) -> dict | None:
         else:
             result['debt_equity'] = 0.0
 
-        # Validate minimum required fields exist
-        critical_fields = ['cfo', 'ebitda', 'total_assets', 'sales_t']
-        if any(result.get(f) is None for f in critical_fields):
-            logger.debug(f"Incomplete fundamentals for {symbol}")
+        # Soften validation: use neutral defaults for missing fields
+        # (yfinance frequently returns None for Indian equities)
+        for field in ['cfo', 'ebitda', 'total_assets', 'sales_t']:
+            if result.get(field) is None:
+                logger.debug(f"{symbol}: missing {field}, using neutral default 0")
+                result[field] = 0
+
+        # Warn if all critical fields are missing (likely a data source issue)
+        if all(result.get(f) == 0 for f in ['cfo', 'ebitda', 'total_assets', 'sales_t']):
+            logger.warning(f"All critical fundamentals missing for {symbol}")
             _fundamentals_cache[symbol] = None
             return None
 

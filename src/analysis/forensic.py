@@ -22,6 +22,9 @@ M_SCORE_THRESHOLD = -2.22
 # Cash Conversion Ratio minimum: profits must convert to real cash
 CCR_THRESHOLD = 0.80
 
+# Sectors where CFO/EBITDA is structurally meaningless
+CCR_EXEMPT_SECTORS = {'Banking', 'Finance', 'Insurance', 'NBFC'}
+
 # Promoter pledge thresholds
 PLEDGE_MAX_PCT = 5.0
 PLEDGE_MAX_DELTA = 2.0  # percentage points per quarter
@@ -53,7 +56,15 @@ def beneish_m_score(f: dict) -> float:
     recv_t1 = f.get('receivables_t1', 0) or 0
     sales_t = f.get('sales_t', 0) or eps
     sales_t1 = f.get('sales_t1', 0) or eps
-    dsri = (recv_t / sales_t) / (recv_t1 / sales_t1 + eps)
+
+    # DSRI: When prior-year receivables unavailable, use neutral default
+    # (no channel stuffing signal if we can't measure it)
+    if recv_t1 == 0 and recv_t == 0:
+        dsri = 1.0  # Both zero/missing -> neutral
+    elif recv_t1 == 0:
+        dsri = 1.0  # Can't compute YoY change -> assume neutral
+    else:
+        dsri = (recv_t / sales_t) / (recv_t1 / sales_t1 + eps)
 
     # AQI: Asset Quality Index
     # Detects capitalising opex — common in Indian mid-caps
@@ -62,9 +73,16 @@ def beneish_m_score(f: dict) -> float:
     ta_t = f.get('total_assets', 0) or eps
     ca_t1 = f.get('current_assets_t1', 0) or 0
     ppe_t1 = f.get('ppe_t1', 0) or 0
-    aqi_t = 1 - (ca_t + ppe_t) / ta_t if ta_t > eps else 0
-    aqi_t1 = 1 - (ca_t1 + ppe_t1) / ta_t if ta_t > eps else eps
-    aqi = aqi_t / (aqi_t1 + eps)
+
+    # AQI: When prior-year current assets/PPE unavailable, use neutral default
+    if (ca_t1 == 0 and ppe_t1 == 0) and (ca_t == 0 and ppe_t == 0):
+        aqi = 1.0  # Both periods missing -> neutral
+    elif ca_t1 == 0 and ppe_t1 == 0:
+        aqi = 1.0  # Can't compute YoY change -> neutral
+    else:
+        aqi_t = 1 - (ca_t + ppe_t) / ta_t if ta_t > eps else 0
+        aqi_t1 = 1 - (ca_t1 + ppe_t1) / ta_t if ta_t > eps else eps
+        aqi = aqi_t / (aqi_t1 + eps)
 
     # TATA: Total Accruals to Total Assets
     # Accrual gap: accounting profit vs real cash
@@ -108,7 +126,8 @@ def cash_conversion_ratio(f: dict) -> float:
         f: Fundamentals dict
 
     Returns:
-        CCR value. Must be >= 0.80 to pass.
+        CCR value. Must be >= CCR_THRESHOLD to pass.
+        Returns -1.0 sentinel when CFO data is unavailable.
     """
     if not f:
         return 0.0
@@ -119,14 +138,24 @@ def cash_conversion_ratio(f: dict) -> float:
     if ebitda <= 0:
         return 0.0  # Negative EBITDA: exclude
 
+    # When CFO is 0 but EBITDA exists, treat as data unavailable (not a genuine 0)
+    # yfinance frequently returns 0 for operatingCashflow on Indian stocks
+    if cfo == 0 and ebitda > 0:
+        return -1.0  # Sentinel: data unavailable
+
     return cfo / ebitda
 
 
-def forensic_pass(f: dict, pledge_data: dict = None) -> bool:
+def forensic_pass(f: dict, pledge_data: dict = None, sector: str = '') -> bool:
     """
     Run all Stage 1A forensic checks.
 
     Returns True only if the stock passes ALL forensic gates.
+
+    Args:
+        f: Fundamentals dict
+        pledge_data: Promoter pledge info dict
+        sector: Sector name for CCR exemption (Banking, Finance, etc.)
     """
     if not f:
         return False  # Missing fundamentals = excluded (conservative fail-safe)
@@ -138,8 +167,11 @@ def forensic_pass(f: dict, pledge_data: dict = None) -> bool:
 
     # Check 2: Cash Conversion Ratio
     ccr = cash_conversion_ratio(f)
-    if ccr < CCR_THRESHOLD:
-        return False
+    if sector not in CCR_EXEMPT_SECTORS:
+        if ccr == -1.0:
+            pass  # Data unavailable — don't penalize
+        elif ccr < CCR_THRESHOLD:
+            return False
 
     # Check 3: Promoter pledging
     if pledge_data and pledge_data.get('data_available'):

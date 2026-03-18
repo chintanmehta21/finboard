@@ -1,0 +1,82 @@
+===============================================================================
+  PRE-FIX BASELINE — System Test Report
+  Source Run: system_test_2026-03-17_193743
+  Command: python -m Tests.SystemTest.run_system_test --mode latest --source sample
+  Purpose: "Before" snapshot to compare against after pipeline changes
+===============================================================================
+
+=== OVERALL STATUS ===
+  Status:     PASS
+  Checks:     55/55 passed (100.0%)
+  Failed:     0
+  Warnings:   0
+
+=== PIPELINE STATS ===
+  Universe size:          51 symbols (sample via yfinance)
+  Pipeline funnel:        [51, 0, 0]    (Universe -> Stage 1A -> Stage 1B -> 1C)
+  Note: Funnel is [51, 0, 0] because BEAR regime skips normal 5-stage ranking
+
+=== REGIME ===
+  Regime detected:        BEAR
+  Regime scalar:          0.0 (0% new buys)
+  Regime inputs:          Nifty=21669, 200DMA=23269 (-6.9%), VIX=19.8, INR 30d=+2.1%, RSI=27.5
+
+=== MACRO SNAPSHOT ===
+  Nifty close:            21669.3
+  Nifty 200 DMA:          23269 (-6.9% below)
+  India VIX:              19.8
+  USD/INR:                92.34
+
+=== CANDIDATES ===
+  Bullish candidates:     5
+  Bearish candidates:     5
+  Max allowed bullish:    10 (passed)
+
+=== FACTOR WEIGHTS (BEAR regime) ===
+  All weights zero (correct for BEAR): rs=0.0, del=0.0, vam=0.0, for=0.0, rev=0.0
+
+=== DATA SOURCES ===
+  OHLCV symbols:          51
+  OHLCV rows (TCS):       363 (>=100 required)
+  OHLCV columns (TCS):    {volume, high, open, low, close}
+  Bhavcopy records:       51
+  Fundamentals symbols:   51
+  Nifty index candles:    491
+  VIX candles:            491
+  USD/INR candles:        517
+
+=== TIMINGS ===
+  Data loading:           45.75s
+  Pipeline execution:      0.19s
+  JSON export:             0.13s
+  Formatter:               0.03s
+  Total:                  46.10s
+
+=== VALIDATOR PASS/FAIL DETAIL ===
+  [PASS] Data Sources:    8/8 checks
+  [PASS] Pipeline:        1/1 checks
+  [PASS] Structure:       7/7 checks
+  [PASS] Regime:          2/2 checks
+  [PASS] Macro:           8/8 checks
+  [PASS] Pipeline Stats:  3/3 checks
+  [PASS] Factor Weights:  1/1 checks
+  [PASS] Bullish:         6/6 checks
+  [PASS] Bearish:         3/3 checks
+  [PASS] JSON Export:     15/15 checks
+  [PASS] Formatter:       1/1 checks
+  ---
+  TOTAL:                  55/55 (100.0%)
+
+=== KNOWN ISSUES / NOTES ===
+  1. TATAMOTORS.NS returns HTTP 404 from yfinance (possibly delisted/renamed)
+     - Not a test failure; the sample universe loads 51 of 52 symbols
+  2. Pipeline funnel shows [51, 0, 0] — this is expected in BEAR regime
+     where normal 5-stage ranking is skipped and replaced with
+     defensive bullish candidate scan
+  3. Last trading date detected: 2026-03-16
+
+===============================================================================
+  Full results (JSON): system_test_2026-03-17_193743.json
+  Full results (TXT):  system_test_2026-03-17_193743.txt
+  Full log:            ../Logs/system_test_2026-03-17_193743.log
+===============================================================================

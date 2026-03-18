@@ -20,21 +20,24 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Regime-specific factor weight configurations
-# Keys: rs, del, vam, for_, rev (forensic uses for_ to avoid keyword conflict)
+# Regime-specific factor weight configurations (4 factors)
+# Keys: rs, del, vam, rev
+# v0.21: FQ removed — negative IC (-0.17/-0.23) confirmed by backtest
+# Its weight redistributed to remaining factors. MRS-VAM combined capped ~55%
+# to mitigate their 0.64 Spearman correlation (41% shared variance).
 REGIME_WEIGHTS = {
-    'BULL': {'rs': 0.30, 'del': 0.20, 'vam': 0.25, 'for': 0.15, 'rev': 0.10},
-    'DIP': {'rs': 0.20, 'del': 0.30, 'vam': 0.10, 'for': 0.30, 'rev': 0.10},
-    'SIDEWAYS': {'rs': 0.05, 'del': 0.30, 'vam': 0.05, 'for': 0.40, 'rev': 0.20},
-    'BEAR': {'rs': 0.00, 'del': 0.00, 'vam': 0.00, 'for': 0.00, 'rev': 0.00},
+    'BULL': {'rs': 0.40, 'del': 0.20, 'vam': 0.20, 'rev': 0.20},
+    'DIP': {'rs': 0.30, 'del': 0.30, 'vam': 0.15, 'rev': 0.25},
+    'SIDEWAYS': {'rs': 0.20, 'del': 0.35, 'vam': 0.15, 'rev': 0.30},
+    'BEAR': {'rs': 0.35, 'del': 0.20, 'vam': 0.20, 'rev': 0.25},
 }
 
-# Exposure scalars per regime
+# v0.2: BEAR gets 10% exposure (1-2 defensive positions) instead of 0%
 REGIME_SCALARS = {
     'BULL': 1.0,
     'DIP': 0.6,
     'SIDEWAYS': 0.3,
-    'BEAR': 0.0,
+    'BEAR': 0.1,
 }
 
 
@@ -77,9 +80,12 @@ def get_regime(nifty_df: pd.DataFrame, vix_df: pd.DataFrame,
         f"RSI={nifty_rsi:.1f}"
     )
 
+    # v0.21: VIX uses 3-day average to prevent single-day spike whipsaw
+    vix_3d = _safe_rolling_mean_n(vix_df, 'close', 3) if not vix_df.empty else vix
+
     # === BEAR REGIME ===
-    # Nifty below 200 DMA OR INR depreciates > 2% in 30 days OR VIX > 24
-    if nifty_close < nifty_ma200 or inr_move_30d > 2.0 or vix > 24:
+    # Nifty below 200 DMA OR INR depreciates > 2% in 30 days OR VIX 3d avg > 24
+    if nifty_close < nifty_ma200 or inr_move_30d > 2.0 or vix_3d > 24:
         regime = 'BEAR'
         logger.info(f"REGIME: {regime} (0% new buys)")
         return REGIME_SCALARS[regime], regime, REGIME_WEIGHTS[regime]
@@ -172,3 +178,12 @@ def _safe_rolling_mean(df: pd.DataFrame, col: str, window: int) -> float:
         return 0.0
     val = df[col].rolling(window).mean().iloc[-1]
     return float(val) if pd.notna(val) else 0.0
+
+
+def _safe_rolling_mean_n(df: pd.DataFrame, col: str, n: int) -> float:
+    """Safely compute mean of last n values (for VIX confirmation)."""
+    if df is None or df.empty or col not in df.columns:
+        return 0.0
+    vals = df[col].tail(n)
+    mean_val = vals.mean()
+    return float(mean_val) if pd.notna(mean_val) else 0.0

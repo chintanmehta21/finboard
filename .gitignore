@@ -1,8 +1,8 @@
 # Admin folder (local only — API keys, execution plan, private docs)
 Admin/*
-# Exception: System Snapshots are documentation, safe to track
-!Admin/System_Snapshots/
-!Admin/System_Snapshots/**
+# Exception: Documentation is safe to track
+!Admin/Documentation/
+!Admin/Documentation/**
 
 # Token cache (sensitive)
 .token_cache/
@@ -43,3 +43,6 @@ dashboard/out/
 # NOTE: dashboard/public/data/signals.json is NOT gitignored.
 # It is tracked in git so Vercel can deploy the dashboard with data.
 # GitHub Actions updates it daily and commits the change.
+
+# Claude Code local settings and skills (not for version control)
+.claude/

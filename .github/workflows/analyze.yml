@@ -12,6 +12,8 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 45  # Daily analysis ~29 min + buffer
+    permissions:
+      contents: write    # Required for committing signals.json back to repo
 
     steps:
       - name: Checkout repo

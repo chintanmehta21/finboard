@@ -1,0 +1,67 @@
+=================================================================
+  SYSTEM TEST REPORT
+  Timestamp: 2026-03-18_181704
+  Mode: latest | Source: sample
+  Target Date: latest
+=================================================================
+
+  STATUS: PASS
+  Checks: 47/47 passed (100.0%)
+  Failed: 0
+
+--- Timings ---
+  analysis            :   29.08s
+  json_export         :    0.02s
+  formatter           :    0.00s
+  total               :   29.10s
+
+--- Check Details ---
+  [PASS] [Analysis       ] run_analysis() executed without errors
+  [PASS] [Structure      ] Result key 'bullish' present: True
+  [PASS] [Structure      ] Result key 'bearish' present: True
+  [PASS] [Structure      ] Result key 'regime_name' present: True
+  [PASS] [Structure      ] Result key 'regime_scalar' present: True
+  [PASS] [Structure      ] Result key 'macro_snapshot' present: True
+  [PASS] [Structure      ] Result key 'pipeline_stats' present: True
+  [PASS] [Structure      ] Result key 'factor_weights' present: True
+  [PASS] [Regime         ] Regime 'BEAR' is valid (one of {'SIDEWAYS', 'BULL', 'DIP', 'BEAR'})
+  [PASS] [Regime         ] Regime scalar 0.1 is valid (one of {0.0, 0.6, 0.1, 0.3, 1.0})
+  [PASS] [Macro          ] Macro field 'nifty_close' present: True
+  [PASS] [Macro          ] Macro field 'nifty_200dma' present: True
+  [PASS] [Macro          ] Macro field 'nifty_dma_pct' present: True
+  [PASS] [Macro          ] Macro field 'india_vix' present: True
+  [PASS] [Macro          ] Macro field 'usdinr' present: True
+  [PASS] [Macro          ] Nifty close is positive: 21917.4
+  [PASS] [Macro          ] India VIX in range [5, 80]: 18.7
+  [PASS] [Macro          ] USD/INR in range [60, 120]: 92.84
+  [PASS] [Pipeline Stats ] Universe size: 51
+  [PASS] [Pipeline Stats ] Pipeline funnel is monotonically decreasing: [51, 41, 39, 32]
+  [PASS] [Pipeline Stats ] Stats include regime: BEAR
+  [PASS] [Factor Weights ] BEAR regime: factor weight keys present: {'vam', 'del', 'rs', 'rev'}
+  [PASS] [Bullish        ] Bullish candidates: 10
+  [PASS] [Bullish        ] Bullish count <= 10: 10
+  [PASS] [Bullish        ] Bullish column 'symbol' present: True
+  [PASS] [Bullish        ] Bullish column 'close' present: True
+  [PASS] [Bullish        ] All bullish close prices positive: True
+  [PASS] [Bullish        ] Confidence scores (adj_confidence) in [0, 100]: True
+  [PASS] [Bearish        ] Bearish candidates: 10
+  [PASS] [Bearish        ] Bearish has 'symbol' column
+  [PASS] [Bearish        ] All bearish close prices positive: True
+  [PASS] [JSON Export    ] JSON key 'generated_at' present: True
+  [PASS] [JSON Export    ] JSON key 'date' present: True
+  [PASS] [JSON Export    ] JSON key 'display_date' present: True
+  [PASS] [JSON Export    ] JSON key 'regime' present: True
+  [PASS] [JSON Export    ] JSON key 'macro' present: True
+  [PASS] [JSON Export    ] JSON key 'pipeline_stats' present: True
+  [PASS] [JSON Export    ] JSON key 'factor_weights' present: True
+  [PASS] [JSON Export    ] JSON key 'bullish' present: True
+  [PASS] [JSON Export    ] JSON key 'bearish' present: True
+  [PASS] [JSON Export    ] JSON regime.name present: True
+  [PASS] [JSON Export    ] JSON regime.scalar present: True
+  [PASS] [JSON Export    ] JSON regime.exposure_pct present: True
+  [PASS] [JSON Export    ] JSON bullish is list: True
+  [PASS] [JSON Export    ] JSON bearish is list: True
+  [PASS] [JSON Export    ] JSON export successful
+  [PASS] [Formatter      ] Telegram report formatted: 1748 chars
+
+=================================================================

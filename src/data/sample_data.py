@@ -317,6 +317,13 @@ def generate_sample_fundamentals(symbols: list[str]) -> dict[str, dict]:
                     debt_equity = total_debt / total_equity if total_equity > 0 else 0
                     cfo = float(info.get('operatingCashflow', 0) or 0) / 1e7
 
+                    # Extract current_assets and ppe for forensic M-Score
+                    current_assets_t = 0
+                    ppe_t = 0
+                    if bs is not None and not bs.empty:
+                        current_assets_t = float(bs_latest.get('Current Assets', 0) or 0) / 1e7
+                        ppe_t = float(bs_latest.get('Net PPE', 0) or 0) / 1e7
+
                     results[symbol] = {
                         'sales_t': sales_t,
                         'sales_t1': sales_t1,
@@ -324,9 +331,15 @@ def generate_sample_fundamentals(symbols: list[str]) -> dict[str, dict]:
                         'ebitda': ebitda,
                         'cfo': cfo,
                         'total_assets': total_assets,
-                        'total_debt': total_debt,
+                        'receivables_t': receivables,
+                        'receivables_t1': receivables * np.random.uniform(0.8, 1.2),
+                        'debt_t': total_debt,
+                        'debt_t1': total_debt * np.random.uniform(0.8, 1.2),
+                        'current_assets_t': current_assets_t,
+                        'current_assets_t1': current_assets_t * np.random.uniform(0.85, 1.15),
+                        'ppe_t': ppe_t,
+                        'ppe_t1': ppe_t * np.random.uniform(0.85, 1.15),
                         'total_equity': total_equity,
-                        'receivables': receivables,
                         'debt_equity': debt_equity,
                         'pledge_pct': np.random.uniform(0, 3),
                         'pledge_delta': np.random.uniform(-1, 0.5),
@@ -340,6 +353,10 @@ def generate_sample_fundamentals(symbols: list[str]) -> dict[str, dict]:
     for symbol in symbols:
         if symbol not in results:
             sales = np.random.uniform(500, 50000)
+            receivables_t = sales * np.random.uniform(0.05, 0.20)
+            debt_t = sales * np.random.uniform(0.2, 1.5)
+            current_assets_t = sales * np.random.uniform(0.5, 1.5)
+            ppe_t = sales * np.random.uniform(1.0, 4.0)
             results[symbol] = {
                 'sales_t': sales,
                 'sales_t1': sales * np.random.uniform(0.85, 1.0),
@@ -347,9 +364,15 @@ def generate_sample_fundamentals(symbols: list[str]) -> dict[str, dict]:
                 'ebitda': sales * np.random.uniform(0.15, 0.35),
                 'cfo': sales * np.random.uniform(0.10, 0.30),
                 'total_assets': sales * np.random.uniform(3, 8),
-                'total_debt': sales * np.random.uniform(0.2, 1.5),
+                'receivables_t': receivables_t,
+                'receivables_t1': receivables_t * np.random.uniform(0.8, 1.2),
+                'debt_t': debt_t,
+                'debt_t1': debt_t * np.random.uniform(0.8, 1.2),
+                'current_assets_t': current_assets_t,
+                'current_assets_t1': current_assets_t * np.random.uniform(0.85, 1.15),
+                'ppe_t': ppe_t,
+                'ppe_t1': ppe_t * np.random.uniform(0.85, 1.15),
                 'total_equity': sales * np.random.uniform(1, 4),
-                'receivables': sales * np.random.uniform(0.05, 0.20),
                 'debt_equity': np.random.uniform(0.1, 1.2),
                 'pledge_pct': np.random.uniform(0, 3),
                 'pledge_delta': np.random.uniform(-1, 0.5),

@@ -12,6 +12,8 @@ jobs:
   backtest:
     runs-on: ubuntu-latest
     timeout-minutes: 120  # 52-week backtest is data-heavy, needs ample time
+    permissions:
+      contents: write    # Required for committing backtest results back to repo
 
     steps:
       - name: Checkout repo
