@@ -49,7 +49,20 @@ jobs:
           TELEGRAM_TOKEN:  ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT:   ${{ secrets.TELEGRAM_CHAT_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: python -m src.main
+        run: |
+          set +e
+          python -m src.main
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -eq 2 ]; then
+            # Exit 2 = market holiday. Python already sent the holiday message.
+            # Mark as holiday so the commit step is skipped.
+            echo "MARKET_HOLIDAY=true" >> $GITHUB_ENV
+            echo "Market holiday detected — skipping dashboard update."
+          elif [ $EXIT_CODE -ne 0 ]; then
+            # Real failure. Python already sent the error notification.
+            exit $EXIT_CODE
+          fi
 
       - name: Save token cache for next run
         uses: actions/cache@v4
@@ -58,6 +71,7 @@ jobs:
           key: fyers-tokens-${{ env.CACHE_DATE }}
 
       - name: Commit updated dashboard data
+        if: env.MARKET_HOLIDAY != 'true'
         run: |
           git config user.name "Finboard Bot"
           git config user.email "bot@finboard.local"
@@ -74,45 +88,6 @@ jobs:
           path: logs/
           retention-days: 7
 
-      - name: Notify on failure via Telegram
-        if: failure()
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT:  ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          python -c "
-          import requests, os
-          token = os.environ.get('TELEGRAM_TOKEN', '')
-          chat = os.environ.get('TELEGRAM_CHAT', '')
-          if token and chat:
-              msg = '⚠️ <b>Finboard — PIPELINE FAILED</b>\n\n'
-              msg += 'The daily analysis workflow failed.\n'
-              msg += 'Check GitHub Actions logs for details.\n'
-              msg += f'Run: $(date +\"%Y-%m-%d %H:%M UTC\")'
-              try:
-                  requests.post(
-                      f'https://api.telegram.org/bot{token}/sendMessage',
-                      json={'chat_id': chat, 'text': msg, 'parse_mode': 'HTML'},
-                      timeout=10
-                  )
-              except Exception:
-                  pass
-          "
-
-      - name: Notify on failure via Discord
-        if: failure()
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          python -c "
-          import requests, os
-          webhook = os.environ.get('DISCORD_WEBHOOK_URL', '')
-          if webhook:
-              msg = '⚠️ **Finboard — PIPELINE FAILED**\n\n'
-              msg += 'The daily analysis workflow failed.\n'
-              msg += 'Check GitHub Actions logs for details.'
-              try:
-                  requests.post(webhook, json={'content': msg}, timeout=10)
-              except Exception:
-                  pass
-          "
+      # NOTE: No workflow-level failure notifications here.
+      # All notifications (success, holiday, error) are sent by Python (src/main.py)
+      # to ensure exactly one message per run regardless of failure type.

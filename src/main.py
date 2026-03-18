@@ -101,7 +101,7 @@ def _load_live_data(target_date: date = None) -> dict:
             f"Bhavcopy unavailable for {last_trading_date} "
             f"— likely market holiday"
         )
-        _send_holiday_notifications()
+        # Raise only — notification is sent once in main(), not here
         raise RuntimeError(f"Bhavcopy unavailable for {last_trading_date} (market holiday)")
 
     logger.info(f"Bhavcopy: {len(bhavcopy_df)} records")
@@ -243,18 +243,36 @@ def run_analysis(data_source: str = 'auto', target_date: date = None) -> dict:
 # ── Daily Cron Entry Point ───────────────────────────────────────────
 
 def main():
-    """Execute the full daily analysis pipeline."""
+    """
+    Execute the daily analysis pipeline.
+
+    Flags:
+      --fallback       Run on the latest available trading day instead of today.
+                       Used by analyze_available.yml when today is a market holiday.
+      --no-dashboard   Skip JSON export (do not update signals.json / dashboard).
+                       Used when running in fallback mode to avoid stale data writes.
+    """
+    import argparse
+    parser = argparse.ArgumentParser(description='Finboard daily pipeline')
+    parser.add_argument('--fallback', action='store_true',
+                        help='Run on latest available data (for holiday fallback)')
+    parser.add_argument('--no-dashboard', action='store_true',
+                        help='Skip JSON/dashboard export')
+    args = parser.parse_args()
+
+    update_dashboard = not args.no_dashboard
+
     IST = pytz.timezone('Asia/Kolkata')
     now = datetime.now(IST)
     logger.info(f"{'='*60}")
     logger.info(f"{SYSTEM_FULL_NAME} — Pipeline Start")
     logger.info(f"Date: {now.strftime('%A, %d %b %Y %I:%M %p IST')}")
+    if args.fallback:
+        logger.info("Mode: FALLBACK (latest available trading day)")
     logger.info(f"{'='*60}")
 
-    # Force reload .env to pick up any updates
     reload_env()
 
-    # Log key status (masked)
     from src.utils.key_loader import get_all_keys
     key_status = get_all_keys()
     logger.info(f"Key status: {key_status}")
@@ -265,14 +283,32 @@ def main():
             "Set FYERS_TOTP_KEY in Admin/.env to enable live Fyers API."
         )
 
+    # Fallback mode: target yesterday so bhavcopy is guaranteed available
+    target_date = None
+    if args.fallback:
+        yesterday = date.today() - timedelta(days=1)
+        # Step back over weekends
+        while yesterday.weekday() >= 5:
+            yesterday -= timedelta(days=1)
+        target_date = yesterday
+        logger.info(f"Fallback target date: {target_date}")
+
     try:
-        result = run_analysis(data_source='auto')
-        _output_results(result)
+        result = run_analysis(data_source='auto', target_date=target_date)
+        _output_results(result, update_dashboard=update_dashboard)
 
     except Exception as e:
-        logger.error(f"Pipeline failed: {e}")
+        err = str(e)
+        logger.error(f"Pipeline failed: {err}")
         logger.error(traceback.format_exc())
-        _send_error_notifications(str(e))
+
+        # Detect market holiday — send ONE clean holiday message, exit 2
+        if 'market holiday' in err.lower():
+            _send_holiday_notifications()
+            sys.exit(2)   # exit 2 = expected no-data day (not a real failure)
+
+        # Real pipeline error — send ONE clean error message, exit 1
+        _send_error_notifications(err)
         sys.exit(1)
 
 
@@ -357,7 +393,7 @@ def _parallel_fetch(symbols: list[str]) -> tuple:
     return fii_data_result, fii_df_result, fundamentals_result, pledge_result
 
 
-def _output_results(result: dict):
+def _output_results(result: dict, update_dashboard: bool = True):
     """Send alerts and export data (shared by live and sample pipelines)."""
     # ── Step 5: Send alerts and export data ──
     logger.info("STEP 5: Sending alerts and exporting data")
@@ -374,10 +410,13 @@ def _output_results(result: dict):
     discord_ok = discord_send(result)
     logger.info(f"Discord{sample_tag}: {'sent' if discord_ok else 'skipped/failed'}")
 
-    # 5c: JSON export for dashboard (with backup/fallback)
-    from src.output.json_export import export_signals
-    json_path = export_signals(result)
-    logger.info(f"JSON export: {json_path}")
+    # 5c: JSON export for dashboard (skipped in no-dashboard / fallback mode)
+    if update_dashboard:
+        from src.output.json_export import export_signals
+        json_path = export_signals(result)
+        logger.info(f"JSON export: {json_path}")
+    else:
+        logger.info("JSON export skipped (no-dashboard mode)")
 
     logger.info(f"{'='*60}")
     logger.info(f"Pipeline completed successfully{sample_tag}")

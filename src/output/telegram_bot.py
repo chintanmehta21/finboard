@@ -41,23 +41,7 @@ def send_signal_report(result: dict) -> bool:
 
 
 def send_holiday_message() -> bool:
-    """Send a market holiday notification."""
-    token = get_key('TELEGRAM_TOKEN')
-    chat_id = get_key('TELEGRAM_CHAT')
-
-    if not token or not chat_id:
-        return False
-
-    msg = (
-        f'<b>{SYSTEM_NAME}</b>\n\n'
-        'Market holiday today. No bhavcopy available.\n'
-        'System will resume on the next trading day.'
-    )
-    return _send_message(token, chat_id, msg)
-
-
-def send_error_message(error: str) -> bool:
-    """Send an error notification to Telegram."""
+    """Send a market holiday notification (single clean message)."""
     token = get_key('TELEGRAM_TOKEN')
     chat_id = get_key('TELEGRAM_CHAT')
 
@@ -66,7 +50,23 @@ def send_error_message(error: str) -> bool:
 
     msg = (
         f'<b>{SYSTEM_NAME} — Error</b>\n\n'
-        f'Pipeline encountered an error:\n<code>{error[:500]}</code>\n\n'
+        'Market holiday today.\n'
+        'System will resume on the next trading day.'
+    )
+    return _send_message(token, chat_id, msg)
+
+
+def send_error_message(error: str) -> bool:
+    """Send an error notification to Telegram (single clean message, no raw trace)."""
+    token = get_key('TELEGRAM_TOKEN')
+    chat_id = get_key('TELEGRAM_CHAT')
+
+    if not token or not chat_id:
+        return False
+
+    msg = (
+        f'<b>{SYSTEM_NAME} — Error</b>\n\n'
+        'Pipeline encountered an error.\n'
         'Check GitHub Actions logs for details.'
     )
     return _send_message(token, chat_id, msg)

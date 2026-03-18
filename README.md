@@ -6,13 +6,15 @@ A fully automated, zero-cost quantitative trading signal system that scans the e
 
 ## What It Does
 
-Every trading day after market close (4:15 PM IST), the system automatically:
+Every trading day after market close (9:00 PM IST), the system automatically:
 
 1. **Authenticates** with Fyers API using headless TOTP (zero manual intervention)
 2. **Fetches** daily OHLCV for 500 stocks, delivery volume from NSE bhavcopy, FII/DII flows, and quarterly fundamentals
 3. **Filters** through a 5-stage pipeline that eliminates governance risks, illiquid stocks, and weak earnings
-4. **Ranks** survivors using 5 uncorrelated factors with regime-adaptive weights
+4. **Ranks** survivors using 4 uncorrelated factors with regime-adaptive weights (IC-calibrated)
 5. **Delivers** top 10 bullish + bearish candidates via Telegram, Discord, and a web dashboard
+
+On market holidays, the `analyze_available` workflow automatically falls back to the latest available trading day and still delivers signals.
 
 ## The 5-Stage Pipeline
 
@@ -23,18 +25,18 @@ Stage 1A: Forensic Filter
         |  Beneish M-Score < -2.22 | CFO/EBITDA >= 0.80 | Pledge < 5%
         |
 Stage 1B: Liquidity & Clean Books
-        |  ADT > 10 Crore | Debt/Equity < 1.5
+        |  ADT > 10 Crore | Sector-adjusted Debt/Equity caps
         |
 Stage 1C: Point-in-Time Earnings Gate
-        |  QoQ Sales > 0% | 2Q EPS Growth > 10%
+        |  QoQ Sales growth (cyclicals: YoY) | Negative earnings nuance
         |
-Stage 2: Multi-Factor Ranking (5 Factors)
-        |  Mansfield RS (25%) | Delivery Conviction (20%)
-        |  Vol-Adj Momentum (20%) | Forensic Quality (20%)
-        |  Earnings Revision Proxy (15%)
+Stage 2: Multi-Factor Ranking (4 Factors, IC-calibrated)
+        |  Mansfield RS (35-40%) | Delivery Conviction (20-35%)
+        |  Vol-Adj Momentum (15-20%) | Earnings Revision Proxy (20-30%)
+        |  [Weights shift by regime — FQ removed: negative IC confirmed]
         |
 Stage 3: Macro & Regime Overlay
-        |  BULL (100%) | DIP (60%) | SIDEWAYS (30%) | BEAR (0%)
+        |  BULL (100%) | DIP (60%) | SIDEWAYS (30%) | BEAR (10%)
         |
   Top 10 Bullish + Top 10 Bearish Candidates
 ```
@@ -49,10 +51,21 @@ Stage 3: Macro & Regime Overlay
 
 | Regime | Exposure | Trigger |
 |--------|----------|---------|
-| Structural Bull | 100% | Nifty > 200 DMA, VIX < 16, INR stable |
+| Structural Bull | 100% | Nifty > 200 DMA, VIX 3d avg < 16, INR stable |
 | Risk-On Dip | 60% | Near 200 DMA or RSI < 40, trend intact |
 | Volatile Sideways | 30% | VIX 16-24, market oscillating |
-| Bear / FII Flight | 0% new buys | Nifty < 200 DMA or VIX > 24 or INR crash |
+| Bear / FII Flight | 10% | Nifty < 200 DMA or VIX 3d avg > 24 or INR crash |
+
+VIX uses a 3-day average to prevent single-day spike whipsaw. BEAR runs the full pipeline at 10% exposure rather than bypassing.
+
+## Exit Rules
+
+| Trigger | Rule |
+|---------|------|
+| Technical | RS < 0 AND close < 20-week MA |
+| Fundamental | QoQ sales drop > 5% |
+| Risk Stop | Close < entry − 3× ATR14 (2.1× when VIX > 20) |
+| Time Stop | 20 weeks (10 weeks when VIX > 20) |
 
 ## Tech Stack (100% Free)
 
@@ -72,82 +85,55 @@ Stage 3: Macro & Regime Overlay
 ## Project Structure
 
 ```
-nse-alpha-system/
-|-- .github/workflows/analyze.yml    # Daily cron (Mon-Fri 4:15 PM IST)
-|-- src/
-|   |-- main.py                      # Pipeline orchestrator
-|   |-- auth/token_manager.py        # Fyers TOTP headless auth
-|   |-- data/
-|   |   |-- fyers_client.py          # OHLCV, VIX, USDINR fetch
-|   |   |-- nse_bhavcopy.py          # Delivery volume from NSE
-|   |   |-- nse_fiidii.py            # FII/DII institutional flows
-|   |   |-- nse_pledge.py            # Promoter pledging data
-|   |   |-- fundamentals.py          # yfinance quarterly financials
-|   |   |-- universe.py              # NSE 500 constituent list
-|   |-- analysis/
-|   |   |-- forensic.py              # Beneish M-Score, CCR, pledge
-|   |   |-- factors.py               # 5-factor scoring engine
-|   |   |-- regime.py                # 4-state regime detection
-|   |   |-- portfolio.py             # ATR sizing, sector caps
-|   |   |-- bearish.py               # Bearish/short candidates
-|   |   |-- price_targets.py         # ATR-projected price bands
-|   |   |-- pipeline.py              # Full 5-stage orchestrator
-|   |-- output/
-|       |-- formatter.py             # Shared message formatting
-|       |-- telegram_bot.py          # Telegram Bot API delivery
-|       |-- discord_bot.py           # Discord webhook delivery
-|       |-- json_export.py           # JSON export for dashboard
-|-- dashboard/                       # Next.js web app (Vercel)
-|-- data/nse500_constituents.csv     # PIT universe list
-|-- Admin/execution_plan.md          # Development execution plan
-|-- requirements.txt
-|-- README.md
+finboard/
+├── .github/workflows/
+│   ├── analyze.yml             # Daily cron (Mon-Fri 9 PM IST) — updates dashboard
+│   ├── analyze_available.yml   # Same cron, holiday fallback — no dashboard update
+│   └── backtest.yml            # Weekly walk-forward backtest (Friday 10 PM IST)
+├── src/
+│   ├── main.py                 # Pipeline orchestrator (--fallback, --no-dashboard flags)
+│   ├── config.py               # System constants
+│   ├── auth/token_manager.py   # Fyers TOTP headless auth
+│   ├── data/
+│   │   ├── fyers_client.py     # OHLCV, VIX, USDINR fetch
+│   │   ├── nse_bhavcopy.py     # Delivery volume from NSE
+│   │   ├── nse_fiidii.py       # FII/DII institutional flows
+│   │   ├── nse_pledge.py       # Promoter pledging data
+│   │   ├── fundamentals.py     # yfinance quarterly financials
+│   │   ├── sample_data.py      # yfinance fallback for testing
+│   │   └── universe.py         # NSE 500 constituent list
+│   ├── analysis/
+│   │   ├── forensic.py         # Beneish M-Score, CCR, pledge
+│   │   ├── factors.py          # 4-factor scoring engine
+│   │   ├── regime.py           # 4-state regime detection
+│   │   ├── pipeline.py         # Full 5-stage orchestrator
+│   │   ├── bearish.py          # Bearish/bullish candidate scoring
+│   │   ├── exit_rules.py       # 4 independent exit triggers
+│   │   └── factor_correlation.py # Pairwise IC + correlation checks
+│   └── output/
+│       ├── formatter.py        # Shared Telegram/Discord formatting
+│       ├── telegram_bot.py     # Telegram Bot API delivery
+│       ├── discord_bot.py      # Discord webhook delivery
+│       └── json_export.py      # JSON export for dashboard
+├── dashboard/                  # Next.js web app (Vercel)
+├── Tests/
+│   ├── SystemTest/             # End-to-end system test (47 validators)
+│   └── backtest/               # Walk-forward backtest harness
+├── Admin/Documentation/        # Versioned design docs (gitignored except this folder)
+├── data/nse500_constituents.csv
+└── requirements.txt
 ```
 
-## Setup (One-Time, ~30 Minutes)
+## Notifications
 
-### Prerequisites
-- Active Fyers trading account with API access enabled
-- Telegram account (for bot alerts)
-- GitHub account (for Actions + repo)
+All notifications are sent exactly once per run by Python — no duplicate workflow-level alerts.
 
-### Step 1: Fyers API
-1. Log in to myapi.fyers.in, create an app
-2. Enable External 2FA TOTP at myaccount.fyers.in/ManageAccount
-3. Copy: App ID, Secret Key, Client ID, PIN, TOTP Secret Key
-
-### Step 2: Telegram Bot
-1. Message @BotFather on Telegram, create a new bot
-2. Create a private channel, add bot as admin
-3. Get chat_id via @userinfobot
-
-### Step 3: Discord (Optional)
-1. In your Discord server, go to channel Settings > Integrations > Webhooks
-2. Create webhook, copy the URL
-
-### Step 4: GitHub Setup
-1. Create a private repo
-2. Push all code
-3. Add secrets in repo Settings > Secrets > Actions:
-   - `FYERS_APP_ID`, `FYERS_SECRET_KEY`, `FYERS_CLIENT_ID`, `FYERS_PIN`, `FYERS_TOTP_KEY`
-   - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-   - `DISCORD_WEBHOOK_URL` (optional)
-
-### Step 5: Dashboard (Vercel)
-1. Import the `dashboard/` directory as a new Vercel project
-2. Deploy — the dashboard reads `signals.json` updated by GitHub Actions
-
-### Step 6: Validate
-1. Go to Actions tab > Run workflow (manual trigger)
-2. Confirm Telegram message received and dashboard updates
-
-## Maintenance
-
-| Frequency | Task | Time |
-|-----------|------|------|
-| Quarterly | Update NSE 500 constituent CSV | 20 min |
-| Automatic | TOTP re-auth every 15 days | 0 min |
-| If needed | Update auth flow if Fyers changes API | 30 min |
+| Event | Message |
+|-------|---------|
+| Successful run | Full signal report with bullish/bearish candidates and macro snapshot |
+| Market holiday (`analyze.yml`) | `Finboard — Error` / Market holiday today. System will resume on the next trading day. |
+| Market holiday (`analyze_available.yml`) | Runs on previous day's data — sends normal signal report |
+| Pipeline error | `Finboard — Error` / Pipeline encountered an error. Check GitHub Actions logs. |
 
 ## Disclaimer
 

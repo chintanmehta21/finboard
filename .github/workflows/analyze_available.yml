@@ -1,0 +1,93 @@
+name: Finboard — Daily Analysis (Always Available)
+
+# Runs every weekday at the same time as the main analyze.yml.
+# Unlike analyze.yml, this workflow ALWAYS produces output:
+#   - Normal trading day → runs on today's data (same as analyze.yml)
+#   - Market holiday     → falls back to the latest available trading day
+#
+# This ensures Telegram/Discord always receive a daily signal report,
+# even on market holidays. The website (signals.json) is NOT updated
+# so historical dashboard data is never overwritten with stale dates.
+#
+# Uses run_analysis(target_date=...) via --fallback flag in src/main.py.
+
+on:
+  schedule:
+    # 15:30 UTC = 9:00 PM IST — after market close (3:30 PM IST)
+    - cron: '30 15 * * 1-5'
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  analyze_available:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read   # Read-only — this workflow never commits
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Set cache date key
+        run: echo "CACHE_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Restore Fyers token cache
+        uses: actions/cache@v4
+        id: token-cache
+        with:
+          path: .token_cache/
+          key: fyers-tokens-${{ env.CACHE_DATE }}
+          restore-keys: fyers-tokens-
+
+      - name: Run analysis — today, with holiday fallback
+        env:
+          FYERS_APP_ID:        ${{ secrets.FYERS_APP_ID }}
+          FYERS_SECRET:        ${{ secrets.FYERS_SECRET_KEY }}
+          FYERS_CLIENT_ID:     ${{ secrets.FYERS_CLIENT_ID }}
+          FYERS_PIN:           ${{ secrets.FYERS_PIN }}
+          FYERS_TOTP_KEY:      ${{ secrets.FYERS_TOTP_KEY }}
+          TELEGRAM_TOKEN:      ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT:       ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set +e
+          python -m src.main --no-dashboard
+          EXIT_CODE=$?
+          set -e
+
+          if [ $EXIT_CODE -eq 2 ]; then
+            # Exit 2 = market holiday (today's bhavcopy unavailable).
+            # Re-run on the latest available trading day so signals are still sent.
+            echo "Market holiday detected. Re-running on latest available trading day..."
+            python -m src.main --fallback --no-dashboard
+          elif [ $EXIT_CODE -ne 0 ]; then
+            # Real pipeline failure — Python already sent the error notification.
+            exit $EXIT_CODE
+          fi
+
+      - name: Save token cache for next run
+        if: always()
+        uses: actions/cache@v4
+        with:
+          path: .token_cache/
+          key: fyers-tokens-${{ env.CACHE_DATE }}
+
+      - name: Upload run log as artifact (7-day retention)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: available-log-${{ env.CACHE_DATE }}
+          path: logs/
+          retention-days: 7
+
+      # NOTE: No git commit step — this workflow never writes to the repo.
+      # No workflow-level failure notifications — Python handles all messaging.

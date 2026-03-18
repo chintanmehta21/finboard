@@ -39,22 +39,30 @@ def send_signal_report(result: dict) -> bool:
 
 
 def send_holiday_message() -> bool:
-    """Send a market holiday notification."""
+    """Send a market holiday notification (single clean message)."""
     webhook_url = get_key('DISCORD_WEBHOOK_URL')
     if not webhook_url:
         return False
 
-    msg = f'# {SYSTEM_NAME}\nMarket holiday today. System resumes next trading day.'
+    msg = (
+        f'## {SYSTEM_NAME} — Error\n\n'
+        'Market holiday today.\n'
+        'System will resume on the next trading day.'
+    )
     return _send_webhook(webhook_url, msg)
 
 
 def send_error_message(error: str) -> bool:
-    """Send an error notification to Discord."""
+    """Send an error notification to Discord (single clean message, no raw trace)."""
     webhook_url = get_key('DISCORD_WEBHOOK_URL')
     if not webhook_url:
         return False
 
-    msg = f'## {SYSTEM_NAME} — Error\n```\n{error[:500]}\n```\nCheck GitHub Actions logs.'
+    msg = (
+        f'## {SYSTEM_NAME} — Error\n\n'
+        'Pipeline encountered an error.\n'
+        'Check GitHub Actions logs for details.'
+    )
     return _send_webhook(webhook_url, msg)
 
 
