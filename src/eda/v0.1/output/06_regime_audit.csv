@@ -1,0 +1,10 @@
+metric,value,threshold,regime_signal
+nifty_close,21669.3,-,input
+nifty_200dma,23268.7,-,input
+nifty_dma_distance_pct,-6.87,"< 0 -> BEAR, abs < 3 -> DIP",BEAR
+india_vix,19.79,"> 24 -> BEAR, 16-24 -> SIDEWAYS, < 16 -> BULL",SIDEWAYS
+usdinr_current,92.36,-,input
+usdinr_30d_move_pct,2.14,> 2% -> BEAR,BEAR
+detected_regime,BEAR,-,BEAR
+regime_scalar,0.0,BULL=1.0 DIP=0.6 SW=0.3 BEAR=0.0,0.0
+factor_weights,"{'rs': 0.0, 'del': 0.0, 'vam': 0.0, 'for': 0.0, 'rev': 0.0}",-,BEAR

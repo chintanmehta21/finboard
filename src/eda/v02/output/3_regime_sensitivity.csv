@@ -1,0 +1,11 @@
+metric,value
+nifty_close,21669.3
+nifty_200dma,23268.7
+dma_pct,-6.87
+vix,19.79
+usdinr,92.36
+regime,BEAR
+scalar,0.0
+weights,"{'rs': 0.0, 'del': 0.0, 'vam': 0.0, 'for': 0.0, 'rev': 0.0}"
+would_flip_if_above_200dma,YES
+distance_to_flip,1599.4

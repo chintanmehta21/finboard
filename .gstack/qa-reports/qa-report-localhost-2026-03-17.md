@@ -1,0 +1,140 @@
+# QA Report — Finboard Dashboard
+
+**Date:** 2026-03-17
+**URL:** http://localhost:3000
+**Branch:** main
+**Framework:** Next.js 14.2 (App Router, static export)
+**Tier:** Exhaustive
+**Mode:** Full + UI/UX Pro Max + Web Design Guidelines
+**Pages tested:** 1 (single-page dashboard)
+**Duration:** ~15 minutes
+
+---
+
+## Health Score
+
+| Category | Weight | Baseline | Final | Delta |
+|----------|--------|----------|-------|-------|
+| Console | 15% | 100 | 100 | 0 |
+| Links | 10% | 100 | 100 | 0 |
+| Visual | 10% | 100 | 100 | 0 |
+| Functional | 20% | 100 | 100 | 0 |
+| UX | 15% | 94 | 100 | +6 |
+| Performance | 10% | 100 | 100 | 0 |
+| Content | 5% | 84 | 100 | +16 |
+| Accessibility | 15% | 22 | 100 | +78 |
+| **TOTAL** | **100%** | **86.6** | **100** | **+13.4** |
+
+**Health score: 86.6 → 100 (+13.4 points)**
+
+---
+
+## Top 3 Things Fixed
+
+1. **WCAG AA contrast compliance** — Muted text (#6b7280) failed 4.5:1 contrast on all dark backgrounds. Fixed to #8a919c (4.97-5.58:1 ratios).
+2. **Missing `<main>` landmark** — Screen readers couldn't identify primary content area. Dashboard div replaced with semantic `<main>` element.
+3. **Body line-height** — Was browser default `normal` (~1.2). Set to 1.5 per WCAG SC 1.4.12 for readability.
+
+---
+
+## Issues Found & Fixed
+
+### High Severity (3)
+
+| ID | Title | Status | Commit |
+|----|-------|--------|--------|
+| ISSUE-001 | `--text-muted` fails WCAG AA 4.5:1 contrast | verified | `4ea7731` |
+| ISSUE-002 | Body `line-height: normal` should be >= 1.5 | verified | `68dfefd` |
+| ISSUE-003 | No `<main>` landmark element | verified | `7ae176d` |
+
+### Medium Severity (4)
+
+| ID | Title | Status | Commit |
+|----|-------|--------|--------|
+| ISSUE-004 | No `:focus-visible` styles for keyboard nav | verified | `e29078e` |
+| ISSUE-005 | No `prefers-reduced-motion` media query | verified | `b790c82` |
+| ISSUE-006 | No Open Graph meta tags | verified | `5efd1c7` |
+| ISSUE-007 | No favicon | verified | `96ed4b2` |
+
+### Low Severity (5)
+
+| ID | Title | Status | Commit |
+|----|-------|--------|--------|
+| ISSUE-008 | Loading state missing `role="status"` | verified | `9452945` |
+| ISSUE-009 | Error state missing `role="alert"` | verified | `568169d` |
+| ISSUE-010 | Inconsistent +/- prefix on 3M/1W returns | verified | `4fd78e5` |
+| ISSUE-011 | Date not in semantic `<time>` element | verified | `e1a63c5` |
+| ISSUE-012 | External link no visual new-tab indicator | verified | `0eeec86` |
+
+---
+
+## Files Changed
+
+| File | Issues |
+|------|--------|
+| `dashboard/app/globals.css` | 001, 002, 004, 005 |
+| `dashboard/app/page.js` | 003, 008, 009, 010, 011, 012 |
+| `dashboard/app/layout.js` | 006, 007 |
+| `dashboard/public/favicon.svg` | 007 (new file) |
+
+---
+
+## UI/UX Pro Max Audit Summary
+
+- **Color System:** Well-structured CSS custom properties. Consistent palette. Contrast issue fixed.
+- **Typography:** Montserrat headings + system font stack body. Good hierarchy (28→18→13px).
+- **Layout:** CSS Grid with 4 responsive breakpoints (768/480/360px). Content capped at 1400px.
+- **Components:** Clean card-based design. Signal cards use grid for score alignment.
+- **Interactions:** Hover transitions on cards/links. Focus-visible styles added for keyboard users.
+- **Visual Hierarchy:** Regime banner draws eye. Color-coded sections (green/red borders).
+- **Verdict:** UI is well-built. No visual changes needed beyond contrast bump on muted text.
+
+## Web Design Guidelines Audit Summary
+
+- **Semantic HTML:** `<main>`, `<header>`, `<footer>`, proper heading hierarchy (h1→h2).
+- **ARIA:** Loading `role="status"`, error `role="alert"`, external link `aria-label`.
+- **Performance:** Static JSON fetch, no unnecessary deps, Next.js static export.
+- **Security:** `rel="noopener noreferrer"` on external link. No user input = no XSS risk.
+- **SEO/Meta:** Viewport, description, OG tags, favicon, `<time>` element.
+- **Accessibility:** WCAG AA contrast, focus-visible, reduced-motion, semantic landmarks.
+- **Responsive:** 4 breakpoints tested (desktop, tablet, mobile, small mobile). All pass.
+
+---
+
+## Console Health
+
+- **Before:** 0 JS errors
+- **After:** 0 JS errors
+- **Verdict:** Clean
+
+---
+
+## Verification Evidence
+
+### Contrast Ratios (After Fix)
+| Element | Ratio | WCAG AA |
+|---------|-------|---------|
+| Muted on card bg | 4.97:1 | PASS |
+| Muted on header bg | 5.58:1 | PASS |
+| Muted on stats bg | 5.58:1 | PASS |
+| Metric labels on card bg | 4.97:1 | PASS |
+
+### All Fixes Programmatically Verified
+- `<main>` element present with class `dashboard`
+- Body line-height: 24px (1.5 × 16px)
+- `prefers-reduced-motion` CSS media query present
+- OG title + description meta tags present
+- Favicon `<link rel="icon">` present
+- `<time datetime="2026-03-16">` present
+- CM link has `aria-label="CM (opens in new tab)"` + ↗ icon
+- All positive returns show `+` prefix: `["+0.7%", "+4.3%", "+0.4%", "+8.9%", "+13.6%"]`
+
+---
+
+## PR Summary
+
+> QA found 12 issues, fixed 12 (all verified), health score 86.6 → 100.
+
+---
+
+*Report generated by /qa (Exhaustive tier) with /ui-ux-pro-max and /web-design-guidelines audits*

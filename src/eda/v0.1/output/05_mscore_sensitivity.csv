@@ -1,0 +1,6 @@
+symbol,m_score,dsri_contrib,aqi_contrib,tata_contrib,lvgi_contrib,sgi_contrib,missing_fields,m_score_if_defaults_fixed
+HCLTECH,,,0.115,0.0191,0.404,,"receivables_t, receivables_t1, current_assets_t, current_assets_t1, ppe_t, ppe_t1, debt_t, debt_t1",
+TECHM,,0.0,0.0,,0.404,0.9616,"receivables_t, receivables_t1, current_assets_t, current_assets_t1, ppe_t, ppe_t1, debt_t, debt_t1, cfo",
+SBIN,,,0.115,0.0014,0.404,,"receivables_t, receivables_t1, current_assets_t, current_assets_t1, ppe_t, ppe_t1, debt_t, debt_t1, cfo, ebitda",
+KOTAKBANK,,,0.0,,0.404,,"receivables_t, receivables_t1, current_assets_t, current_assets_t1, ppe_t, ppe_t1, debt_t, debt_t1, cfo, ebitda",
+RELIANCE,,0.0,0.0,,0.404,0.9699,"receivables_t, receivables_t1, current_assets_t, current_assets_t1, ppe_t, ppe_t1, debt_t, debt_t1, cfo",

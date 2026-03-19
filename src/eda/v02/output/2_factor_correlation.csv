@@ -1,0 +1,11 @@
+factor_1,factor_2,pearson,spearman,kendall,n_stocks,violation
+mrs,deliv,,,,51,NONE
+mrs,vam,0.4531,0.6356,0.4441,51,MODERATE
+mrs,fq,-0.1861,-0.1986,-0.1362,43,NONE
+mrs,rev,0.6507,0.5265,0.3822,51,NONE
+deliv,vam,,,,51,NONE
+deliv,fq,,,,43,NONE
+deliv,rev,,,,51,NONE
+vam,fq,-0.2601,-0.2049,-0.133,43,NONE
+vam,rev,0.3165,0.2931,0.1975,51,NONE
+fq,rev,-0.0181,-0.0227,-0.0122,43,NONE

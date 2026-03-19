@@ -1,0 +1,16 @@
+stage,metric,value
+Universe,total_symbols,52
+1A,forensic_pass,41
+1A,m_score_pass_rate,80.8%
+1A,ccr_pass_rate_0.80,73.1%
+1B,liquidity_pass,49
+1C,earnings_pass_current,43
+1C,earnings_pass_lenient,52
+2,factor_scored,51
+3,regime,BEAR
+3,bearish_qualify_current,0
+3,bearish_qualify_relaxed,1
+3,bullish_qualify,5
+PIPELINE,funnel,"[52, 41, 49, 43]"
+TARGET,bullish_target,5-10
+TARGET,bearish_target,5-10

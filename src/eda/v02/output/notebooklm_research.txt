@@ -1,0 +1,475 @@
+================================================================================
+  NOTEBOOKLM RESEARCH OUTPUT — PLAN v0.21
+  Date: 2026-03-18
+  Notebook: Buffett Letters (1977-2024), Damodaran Valuation Courses,
+            AI/ML Trading (Boris Banushev), Awesome-Quant Directory
+  Total Queries: 16 attempted, 10 with substantial answers, 6 with no data
+================================================================================
+
+NOTEBOOK CONTENTS DISCOVERY:
+The NotebookLM notebook contains:
+1. Warren Buffett's Berkshire Hathaway Shareholder Letters (1977-2024)
+2. Aswath Damodaran's valuation courses and lectures
+3. AI/ML Trading material (Boris Banushev — GANs, LSTMs, BERT for trading)
+4. Awesome-Quant GitHub directory (tools/libraries listing)
+
+NOTE: The notebook does NOT contain forensic accounting research, Indian
+equities factor studies, NSE-specific data, PEAD literature, or regime
+detection research. Questions on these topics were redirected to browser research.
+
+================================================================================
+STAGE 1A: FORENSIC FILTER
+================================================================================
+
+Q1: M-Score Calibration for India
+STATUS: NO DATA — Redirect to browser research
+The notebook does not contain specific research on M-Score accuracy for Indian
+equities, Ind AS accounting standards adjustments, or Indian manipulation cases.
+ACTION: Add to browser research (S1)
+
+Q2: CCR Single-Year vs Cumulative
+STATUS: PARTIAL — Key insight on EBITDA
+Buffett warns against EBITDA as a "pernicious practice" and "flawed favorite."
+He considers EBITDA-based metrics misleading because they ignore depreciation
+(a real economic cost). No specific CCR multi-year research available.
+KEY FINDING: Use EBIT-based metrics instead of EBITDA where possible.
+ACTION: Add cumulative CCR methodology to browser research (S2)
+
+Q3: TATA Standalone Gate
+STATUS: NO DATA — Redirect to browser research
+No quantitative research on TATA thresholds for Indian equities in the notebook.
+ACTION: Add to browser research (S3)
+
+Q4: Banking Forensic Alternatives
+STATUS: NOT ATTEMPTED — Notebook unlikely to have banking-specific forensic metrics
+ACTION: Add to browser research (S4)
+
+Q5: Promoter Pledge — Absolute vs Percentage
+STATUS: NOT ATTEMPTED — India-specific corporate governance not in notebook
+ACTION: Add to browser research (implicitly covered by existing S4 scope)
+
+Q6: Forensic Quality Score — Negative IC Problem
+STATUS: EXCELLENT ANSWER
+Source: Damodaran valuation courses + Buffett letters
+
+FINDING: FQ should be a PASS/FAIL gate, NOT a linear ranking factor.
+
+Evidence:
+- Quality predicts LOWER returns because high quality = high valuations = limited
+  upside. The market already prices in accounting cleanliness.
+- Buffett: "A business with terrific economics can be a bad investment if the price
+  paid is excessive."
+- Damodaran: Expected returns come from "mismatches" — high ROE but low multiples.
+  Pure quality screening finds expensive companies.
+- The negative IC (-0.17 at 3M, -0.23 at 6M) is EXPECTED because forensic quality
+  acts as insurance against blowups (prevents drawdowns) but does NOT catalyze
+  short-term appreciation.
+
+RECOMMENDATION:
+- Remove FQ as a scoring factor in Stage 2
+- Keep FQ as a binary gate in Stage 1A (pass/fail only)
+- Do NOT replace with deep value (P/FCF) for 3-6M — Damodaran says short-term
+  returns are "voting machine" driven, not "weighing machine"
+- If adding a value signal, use RELATIVE valuation (sector-relative P/E or
+  EV/EBIT) to find "mismatches" where quality is high but valuation is not excessive
+
+Q6 FOLLOW-UP: Value Factor Replacement
+STATUS: EXCELLENT ANSWER
+Source: Damodaran + Buffett
+
+FINDINGS:
+1. MRS-VAM at 0.64 correlation = double-counting momentum. Should combine into
+   a single "momentum composite" factor or drop the weaker signal (VAM).
+2. Do NOT replace FQ with deep value (P/FCF) for 3-6M system — "voting machine"
+   in the short run. Value investing requires multi-year horizons.
+3. For 3-6M: use RELATIVE valuation (PE, EV/EBIT vs sector peers) for
+   finding "mismatches" — stocks with high ROE + low multiples.
+4. Damodaran recommends screening for: low multiple + high growth + low risk +
+   high ROE simultaneously.
+
+================================================================================
+STAGE 1B: LIQUIDITY & LEVERAGE
+================================================================================
+
+Q7: ADT Threshold ₹10 Crore
+STATUS: NOT ATTEMPTED — India-specific market microstructure not in notebook
+ACTION: Add to browser research (S5)
+
+Q8: Worst-5-Day Stress Test
+STATUS: NOT ATTEMPTED — Quantitative methodology not in notebook
+ACTION: Add to browser research (S5 scope)
+
+Q9: Sector D/E Caps and Leverage Assessment
+STATUS: EXCELLENT ANSWER
+Source: Buffett letters + Damodaran courses
+
+FINDINGS:
+1. Buffett: Utilities can safely carry heavy debt (regulated, stable cash flows);
+   competitive businesses in unregulated industries should avoid it.
+2. Use EBIT/Interest, NOT EBITDA/Interest — Buffett: EBITDA ignores depreciation,
+   which is a real economic cost. "We believe every dime of depreciation expense
+   is a real cost."
+3. Damodaran: ~30% debt/total capital is optimal for tech; higher increases cost
+   of equity. Optimal leverage varies dramatically by sector.
+4. Our sector-adjusted D/E caps (Banking=unlimited, Infra=3.0, Metals=2.5) are
+   directionally correct but should be supplemented with EBIT/Interest coverage.
+
+RECOMMENDATION:
+- Add EBIT/Interest coverage ratio as complementary check (not replacement)
+- Threshold: EBIT/Interest > 2.0x for all sectors
+- Banking exemption from D/E remains appropriate
+- Utilities/Power can carry higher D/E but must still demonstrate interest coverage
+
+Q10: Free Float Gate
+STATUS: NOT ATTEMPTED — Regulatory/data question not in notebook
+ACTION: Add to browser research (S7)
+
+================================================================================
+STAGE 1C: EARNINGS GATE
+================================================================================
+
+Q11: Missing Data = PASS Safety
+STATUS: NOT ATTEMPTED — Data quality methodology not in notebook
+ACTION: Add to browser research (S8)
+
+Q12: QoQ vs YoY for Cyclical Sectors
+STATUS: EXCELLENT ANSWER
+Source: Damodaran valuation courses
+
+FINDINGS:
+1. Damodaran uses trailing 12-month (TTM) earnings — bundling last 4 quarters —
+   as the most updated baseline. NOT quarter-over-quarter.
+2. He explicitly warns that using the most recent year's earnings for cyclical/
+   commodity companies is "highly misleading" because those numbers reflect
+   extreme peaks and troughs.
+3. To normalize: estimate what the business would generate in a "normal year" —
+   this requires judgment, not a mechanical formula. Use common sense to smooth
+   out booms and recessions.
+4. KEY CONCEPT — "Truncation Risk": The danger that a distressed company won't
+   survive long enough to see the cycle turn. Companies with heavy debt during
+   a downturn face high probability of liquidation.
+5. To distinguish temporary weakness from structural decline: LOOK AT THE
+   BALANCE SHEET. Cyclical + high debt = potential death. Cyclical + low debt =
+   likely to survive and recover.
+
+RECOMMENDATION:
+- Switch cyclical sectors from QoQ to TTM (trailing 12-month) comparison
+- Add a "truncation risk" check: cyclical sector + D/E > sector median +
+  declining revenue = HIGH RISK exclusion
+- Use TTM revenue growth instead of QoQ for all sectors (more stable signal)
+- For cyclicals, compare TTM revenue to same-period prior year (YoY TTM)
+
+Q13-Q14: Negative Earnings and Earnings Quality for 3-6M
+STATUS: EXCELLENT ANSWER
+Source: Buffett letters + Damodaran courses
+
+FINDINGS:
+1. Buffett: Growth in a low-return business is "the worst sort of business" —
+   it requires capital and destroys value. A company growing revenue but with
+   persistently negative returns on capital is a value trap.
+2. Damodaran: Young startups can have negative cash flow if they'll generate
+   big positive cash flow later; BUT mature, low-ROC companies with negative
+   earnings get a "stupidity discount" — the market correctly punishes them.
+3. Buffett: "Never is there just one cockroach in the kitchen." Consecutive
+   quarters of negative earnings = structural decay, not a one-off event.
+4. No 3-6M forward return prediction data in the notebook — this is empirical
+   research the notebook doesn't contain.
+
+RECOMMENDATION:
+- Add consecutive negative NI check: exclude if NI negative for 3+ consecutive
+  quarters regardless of revenue trend (the "cockroach principle")
+- Current dual condition (negative NI + declining revenue = exclude) is validated
+- Add ROC (Return on Capital) check: revenue growing + ROC < cost of capital =
+  "worst sort of business" — should not score highly
+
+Q15: Data Staleness
+STATUS: NOT ATTEMPTED — SEBI/data quality question not in notebook
+ACTION: Add to browser research (S8 scope)
+
+================================================================================
+STAGE 2: MULTI-FACTOR RANKING
+================================================================================
+
+Q16: MRS Horizon Weighting
+STATUS: NOT ATTEMPTED — Quantitative momentum research not in notebook
+ACTION: Add to browser research (S11)
+
+Q17: Delivery Conviction
+STATUS: INFORMED BY AI/ML QUERY
+The AI/ML trading section (Boris Banushev) found that the most important
+features for stock prediction are:
+- 7-day Moving Average and MACD (momentum indicators)
+- Bollinger Bands (volatility indicator)
+- Very short lookback: 17 days for daily prediction
+- NO volume or delivery features used in any of the ML models
+
+This suggests delivery volume may not be a strong predictive signal, at least
+for the AI/ML approaches tested. The academic validation for delivery conviction
+as a 3-6M predictor remains unclear.
+ACTION: Add to browser research (S12)
+
+Q18: VAM Normalization
+STATUS: NOT ATTEMPTED — Statistical methodology not in notebook
+ACTION: Add to browser research (S13)
+
+Q19: Earnings Revision Proxy (PEAD)
+STATUS: NO DATA
+The notebook does not contain research on Post-Earnings Announcement Drift,
+price-reaction proxies, or comparisons of PEAD vs momentum for 3-6M prediction.
+ACTION: Add to browser research (S14)
+
+Q20: MRS-VAM Factor Correlation
+STATUS: PARTIALLY ANSWERED (via Q6 follow-up)
+MRS-VAM at 0.64 Spearman = double-counting momentum. Recommendation from
+Damodaran framework: combine into single composite or drop weaker (VAM).
+ACTION: Add orthogonalization methodology to browser research (S17)
+
+Q21: Percentile Ranking in Small Universe
+STATUS: NOT ATTEMPTED — Statistical methodology not in notebook
+ACTION: Add to browser research (S15)
+
+================================================================================
+STAGE 3: REGIME, EXITS, PORTFOLIO
+================================================================================
+
+Q22: Regime Scalar — Sizing vs Ranking
+STATUS: EXCELLENT ANSWER
+Source: Buffett letters + Damodaran courses
+
+FINDINGS:
+1. Buffett: Rejects macro market timing as a "terrible mistake" BUT maintains
+   massive cash reserves ($10-20B minimum, sometimes $100B+) as permanent defense.
+2. KEY FINDING: Regime scalar should apply to SIZING, not RANKING. This preserves
+   ranking quality (differentiation between candidates) while reducing total
+   capital deployed in adverse regimes.
+3. Damodaran: Uses a dynamic implied equity risk premium that naturally adjusts —
+   in overvalued markets, fewer stocks pass valuation screens, so the portfolio
+   naturally concentrates without needing to artificially compress scores.
+4. Mathematically: if all scores are multiplied by 0.1 in BEAR, the relative
+   ranking is preserved but the scores become compressed to 3-10 range, making
+   differentiation difficult. Better to rank by raw confidence, then size by scalar.
+
+RECOMMENDATION:
+- Apply regime scalar (0.1 in BEAR) to position SIZE after ranking
+- Keep raw confidence scores for candidate ranking/selection
+- This mathematically preserves ranking quality while reducing exposure
+- Alternative: use regime to set max number of positions (e.g., BEAR = max 2-3)
+
+Q23: VIX Confirmation Period
+STATUS: PARTIAL ANSWER
+Buffett: "We never try to time stocks... when we find a business we understand
+and with attractive economics and management, we buy it."
+He rejects short-term VIX-based regime switching. Instead, he holds permanent
+cash reserves that allow him to buy during panics without needing to sell.
+Damodaran: Uses country risk premium (sovereign default spread × equity/bond
+volatility ratio) for emerging markets like India. This naturally adjusts
+without binary regime flipping.
+
+FINDING: The notebook's philosophy opposes single-day regime flips, supporting
+a confirmation period or moving average approach. However, no specific 3-5 day
+confirmation methodology is provided.
+ACTION: Add to browser research (S19)
+
+Q24: ATR Stop Multiplier
+STATUS: ANSWERED (philosophically, not quantitatively)
+Buffett: Firmly rejects stop-loss strategies. Considers price volatility a
+BENEFIT (allows buying cheaply), not a trigger to sell. Automatic selling
+during market drops is irrational.
+Damodaran: If you have a short-term horizon (6 months), abandon intrinsic
+DCF models entirely and rely on relative valuation (pricing multiples), since
+short-term returns are driven by market mood.
+
+NOTE: Our system is a quant trading system, not a long-term value investing
+system. Stop-losses serve a different purpose here (capital preservation for
+redeployment). Buffett's philosophy applies to permanent holdings, not
+tactical 3-6M positions.
+ACTION: Add ATR multiplier optimization to browser research (S20)
+
+Q25: Time Stop — 26 Weeks vs Shorter
+STATUS: PARTIAL ANSWER
+Covered in the Q22-25 combined query. No specific data on optimal momentum
+strategy time stops. Damodaran's framework suggests relative valuation
+approach for short horizons, which doesn't directly address time stops.
+ACTION: Add to browser research (S21)
+
+Q26: Dynamic Beta Cap
+STATUS: NOT ATTEMPTED — Portfolio risk methodology not in notebook
+ACTION: Add to browser research (S22)
+
+Q27: Defensive Sector Balance
+STATUS: EXCELLENT ANSWER
+Source: Buffett letters + Damodaran courses
+
+FINDINGS:
+1. Buffett defines defensive businesses as those with enduring "moat" — powerful
+   global brand (Coca-Cola, Gillette) or low-cost producer status. Essential
+   products/services that retain purchasing power during inflation while requiring
+   minimal incremental capital.
+2. He does NOT explicitly label FMCG, Pharma, or IT as defensive sectors. He
+   actively AVOIDS industries prone to rapid change because their competitive
+   moats are easily destroyed (this could include IT).
+3. For surviving bear markets: Buffett does NOT rely on sector rotation. He
+   relies on maintaining massive, untouchable CASH reserves (U.S. Treasuries)
+   to ensure he never needs to sell assets during a panic.
+4. HARD-ENFORCE CASH/LIQUIDITY in BEAR regime aligns closer to Buffett's
+   philosophy than hard-enforcing sector caps.
+5. Damodaran on emerging markets (India): Add Country Risk Premium (CRP) =
+   sovereign default spread × (equity volatility / bond volatility). Apply based
+   on actual revenue exposure, not just where company is incorporated.
+6. Neither Buffett nor Damodaran designs risk controls for 3-6M horizons. Buffett
+   considers short-term market timing irrational.
+
+RECOMMENDATION:
+- Don't hard-enforce sector caps for "defensive" allocation
+- Instead, consider cash-weight rules: in BEAR, hold more in cash equivalents
+- Our 10% exposure in BEAR already approximates this philosophy
+- For Indian equities, incorporate country risk premium in valuation-based signals
+- Defensive = businesses with pricing power + low capital needs, not specific sectors
+
+Q28: Bearish Model — 4-Component Scoring
+STATUS: EXCELLENT ANSWER
+Source: Damodaran valuation courses + Buffett letters
+
+FINDINGS:
+1. Damodaran: No guaranteed time horizon for valuation mean reversion. You
+   cannot time when overvalued stocks will correct.
+2. Buffett: Can't time bubble popping — "a room in which clocks have no hands."
+3. For identifying bearish candidates: use sector-relative P/E and EV/EBIT,
+   controlling for growth, risk, and ROE, rather than absolute valuation.
+4. Increasing Fundamental Deterioration weight (from 25% to higher) makes
+   sense for 3-6M predictions because business realities get priced in over
+   this horizon — the market can ignore bad news for days but not months.
+5. Technical signals (35% weight) are valid for identifying stocks ALREADY
+   in decline (momentum), while fundamental deterioration predicts FUTURE declines.
+
+RECOMMENDATION:
+- Increase Fundamental Deterioration weight: 25% → 30-35%
+- Keep Technical Weakness at 30-35% (validates current decline)
+- Reduce Accounting Risk to 20% (M-Score is binary — pass/fail, not gradual)
+- Keep Leverage Risk at 15% (validated by Damodaran and Buffett)
+- Add valuation excess component using sector-relative PE/EV/EBIT
+- Total: Technical 30% + Accounting 20% + Fundamental 30% + Leverage 15% +
+  Valuation Excess 5% (or merge into Fundamental)
+
+================================================================================
+AI/ML TRADING FEATURES QUERY
+================================================================================
+
+STATUS: EXCELLENT ANSWER
+Source: Boris Banushev — AI/ML Trading (GANs, LSTMs, BERT)
+
+FINDINGS:
+Most important features for stock prediction in ML models:
+1. 7-day Moving Average — short-term momentum
+2. MACD — momentum and trend
+3. Bollinger Bands — volatility regime
+4. Very short lookback: 17 days for daily prediction
+5. NO volume or delivery features used
+6. VIX used as a correlated asset feature (market-wide fear)
+7. All models are purely price-based
+
+RELEVANCE TO OUR SYSTEM:
+- Validates that momentum (MRS) and volatility (VAM) are the right factor types
+- Delivery conviction may not add predictive value (no ML model uses volume)
+- Short lookbacks suggest recent momentum matters more than long-term
+- VIX as market-wide feature validates our regime detection approach
+
+================================================================================
+PORTFOLIO CONSTRUCTION QUERY
+================================================================================
+
+STATUS: GOOD ANSWER
+Source: Buffett letters
+
+FINDINGS:
+1. Buffett strongly supports concentrated portfolios: "For a 'know-something'
+   investor capable of finding five to ten sensibly-priced companies with
+   competitive advantages, conventional diversification makes no sense and
+   will actively hurt your results while increasing your risk."
+2. He quotes Keynes: it is a mistake to spread money across many enterprises
+   rather than committing large sums to just two or three.
+3. Concentration DECREASES risk for active investors because it forces higher
+   intensity of research and greater comfort level before buying.
+4. Buffett firmly rejects stop-losses — price volatility is a benefit (allows
+   buying cheaply), not a trigger to sell.
+5. No data on ATR-based sizing or Indian equity position sizing specifics.
+
+RELEVANCE TO OUR SYSTEM:
+- Our max 10 stocks is validated by Buffett's philosophy
+- 5-7 stocks might be even better if conviction is high (IC=0.95)
+- Stop-losses serve a different purpose in our quant system (capital preservation
+  for redeployment) vs Buffett's permanent holdings
+- Our 15% max position / 25% sector cap is reasonable for a 10-stock portfolio
+
+================================================================================
+SUMMARY: KEY FINDINGS FOR CODE CHANGES
+================================================================================
+
+1. REMOVE FQ AS RANKING FACTOR — Keep as gate only (negative IC confirmed as
+   expected by Damodaran — quality premium already priced in)
+
+2. COMBINE MRS + VAM into single momentum composite — 0.64 correlation =
+   double-counting. Drop weaker signal or orthogonalize.
+
+3. USE EBIT/INTEREST instead of EBITDA/Interest for leverage — Buffett explicitly
+   says EBITDA ignores real costs
+
+4. SWITCH CYCLICALS TO TTM — Use trailing 12-month revenue, not QoQ. Add
+   truncation risk check (cyclical + high debt = exclude)
+
+5. ADD CONSECUTIVE NI CHECK — 3+ quarters negative NI = structural decay
+   ("cockroach principle")
+
+6. REGIME SCALAR TO SIZING NOT RANKING — Apply 0.1x to position size, not to
+   confidence score. Preserves ranking quality.
+
+7. BEARISH MODEL: Increase Fundamental Deterioration weight (25% → 30-35%),
+   decrease Accounting Risk (25% → 20%). Add valuation excess using sector-
+   relative PE/EV/EBIT.
+
+8. CASH RESERVES > SECTOR ROTATION — In BEAR, holding cash (low exposure) is
+   more important than forcing defensive sector allocation. Our 10% BEAR
+   exposure already implements this.
+
+9. DELIVERY CONVICTION SUSPECT — No ML models use volume features. May not
+   be a valid 3-6M predictor. Needs browser research validation.
+
+10. CONCENTRATED PORTFOLIO VALIDATED — 5-10 stocks with high conviction is
+    optimal. Our max 10 + 15% position cap is appropriate.
+
+================================================================================
+QUESTIONS REDIRECTED TO BROWSER RESEARCH
+================================================================================
+
+The following questions were not sufficiently answered by NotebookLM and should
+be added to the agent-browser research in Step 2:
+
+FROM STAGE 1A:
+- Q1: M-Score calibration for Indian equities (Ind AS accuracy)
+- Q2: Cumulative CCR methodology and data requirements
+- Q3: TATA standalone threshold for India
+- Q4: Banking sector forensic alternatives (NPA, Provision Coverage)
+- Q5: Promoter pledge absolute vs percentage (DHFL/Zee analysis)
+
+FROM STAGE 1B:
+- Q7: ADT threshold validation for ₹15 lakh positions
+- Q8: Worst-5-day stress test methodology
+- Q10: Free float gate utility
+
+FROM STAGE 1C:
+- Q11: Missing data = PASS safety analysis
+- Q15: Data staleness handling (SEBI filing lag)
+
+FROM STAGE 2:
+- Q16: MRS optimal horizon weighting
+- Q17: Delivery conviction academic evidence
+- Q18: VAM normalization / extreme value handling
+- Q19: PEAD / earnings revision proxy validation
+- Q20: MRS-VAM orthogonalization methodology
+- Q21: Percentile ranking vs z-scores for small universes
+
+FROM STAGE 3:
+- Q23: VIX confirmation period methodology
+- Q24: ATR stop multiplier (2x vs 2.5-3.5x)
+- Q25: Time stop optimization (26 weeks vs shorter)
+- Q26: Dynamic beta cap methodology

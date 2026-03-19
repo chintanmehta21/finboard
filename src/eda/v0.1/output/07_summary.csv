@@ -1,0 +1,17 @@
+metric,value,pct_of_total
+total_universe,52,100%
+fundamentals_all_fields_present,0,0.0%
+has_ohlcv_data,51,98.1%
+has_fundamentals_data,52,100.0%
+m_score_pass_rate,47,90.4%
+ccr_pass_rate_0.80,23,44.2%
+ccr_pass_rate_0.60,21,40.4%
+pledge_pass_rate,52,100.0%
+stage_1a_forensic_pass,46,88.5%
+stage_1a_pass_funnel,23,44.2%
+stage_1b_pass_funnel,23,44.2%
+m_score_fail_count,5,9.6%
+m_score_rescuable_with_defaults,0,0.0%
+detected_regime,BEAR,-
+m_score_threshold,-2.22,-
+ccr_threshold,0.5,-

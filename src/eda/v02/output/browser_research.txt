@@ -1,0 +1,730 @@
+================================================================================
+  BROWSER RESEARCH OUTPUT — PLAN v0.21
+  Date: 2026-03-18
+  Total Searches: 26 planned + NotebookLM redirects
+  Method: 5 parallel research agents covering all stages
+================================================================================
+
+================================================================================
+STAGE 1A: FORENSIC FILTER
+================================================================================
+
+S1: M-Score Threshold for Indian Equities
+KEY FINDINGS:
+- The -2.22 threshold belongs to the 5-VARIABLE model (1997 paper)
+- The 8-VARIABLE model (1999 paper) uses -1.78 as its threshold
+- OUR SYSTEM HAS A MISMATCH: using -2.22 threshold with 8-variable formula
+  This makes our gate overly conservative (higher false negative rate)
+- At -1.78: 76% of manipulators correctly identified, 17.5% false positive rate
+- At -2.22: fewer false positives but higher false negative rate
+- India-specific: Shah et al. (2018) BSE 100 study — 11 of 65 flagged as
+  manipulators. Most significant variables: TATA, DSRI, SGI
+- Post-Ind AS adoption: ratio of manipulators INCREASED per M-Score model —
+  Ind AS may create more accounting flexibility
+- FOR 19% OF ASIAN COMPANIES (including India), M-Score CANNOT BE CALCULATED
+  because Indian companies often don't separately report COGS vs SG&A
+- DHFL and Yes Bank are financial institutions — M-Score explicitly EXCLUDES them
+- India Forensic estimates at least 1,200 listed companies have counterfeited
+  financial statements
+
+RECOMMENDATION:
+- Fix threshold mismatch: use -1.78 with 8-var model, OR -2.22 with 5-var model
+- Add fallback to 5-variable model when SGAI data is unavailable
+- Keep current banking/NBFC exemption (M-Score not designed for financials)
+
+Sources: GMT Research, ResearchGate (Shah et al. 2018), Wiley (Ind AS study),
+StableBread, Transparently.ai, GRFCG
+
+---
+
+S2: Cumulative CCR — Marcellus Methodology
+KEY FINDINGS:
+- Marcellus uses 6-YEAR CUMULATIVE CFO / 6-YEAR CUMULATIVE EBITDA
+- Minimum threshold: >= 0.70 (our 0.80 is STRICTER than Marcellus)
+- Marcellus uses 12 forensic ratios for non-financial, 11 for financial companies
+- Forensic screening alone adds ~5.5% p.a. to backtested returns
+- "Zone of Quality" outperforms "Zone of Thuggery" by 9% p.a. over CY16-19
+- Amtek Auto: CCR ~60% over FY2003-FY2014, flagged well before collapse
+- Our system currently uses single-year CCR — Marcellus uses 6-year
+
+RECOMMENDATION:
+- Consider extending CCR to cumulative 6-year if data supports
+- Our 0.80 threshold is stricter than Marcellus's 0.70 — keep for quality focus
+- Add -1.0 sentinel handling for missing CCR data
+
+Sources: Marcellus MeritorQ newsletters, Tickertape, eLearnMarkets
+
+---
+
+S3: TATA Standalone Threshold
+KEY FINDINGS:
+- Beneish original (1999): Non-manipulators mean TATA = 0.018,
+  Manipulators mean TATA = 0.031
+- Reasonable standalone cutoff: ~0.025 (midpoint), NOT formally validated
+- TATA carries HIGHEST coefficient (+4.679) in the 8-variable M-Score
+- Cash Flow Statement approach (simpler): TATA = (NI - CFO) / Total Assets
+- India BSE 100 study: TATA was one of 3 most significant variables
+- No India-specific standalone threshold has been published
+
+RECOMMENDATION:
+- Add TATA as SUPPLEMENTARY monitor (not hard gate) alongside M-Score
+- Flag if TATA > 0.025 (caution), hard flag if > 0.031 (red flag)
+- TATA < 0.018 is generally clean
+- Use Cash Flow approach (NI - CFO) / Total Assets for simpler calculation
+
+Sources: FasterCapital, StableBread, WisdomLib, ResearchGate (Beneish 1999)
+
+---
+
+S4: Banking Forensic Alternatives
+KEY FINDINGS:
+- Beneish explicitly excluded financial institutions from M-Score
+- Marcellus has a SEPARATE 11-ratio model for banks/NBFCs
+- ~70% of Indian banks/NBFCs fall in the "naughty" accounting quality category
+
+KEY BANKING METRICS:
+| Metric              | Threshold        | Purpose                    |
+|---------------------|------------------|----------------------------|
+| Provision Coverage  | >= 70% (RBI min) | Buffer against bad loans   |
+| Gross NPA Ratio     | < 2% excellent   | Asset quality              |
+| Net NPA Ratio       | Lower is better  | Unprovisioned bad loans    |
+| NPA Divergence      | Zero is ideal    | Banks hiding bad loans     |
+| Credit Cost         | Stable           | Provisioning impact        |
+| ROA                 | > 1%             | Asset deployment efficiency|
+| Capital Adequacy    | >= 9% (RBI min)  | Solvency buffer            |
+
+- NPA Divergence is the CRITICAL banking forensic metric — triggered for
+  SEBI disclosure when additional provisioning > 10% of reported profit
+
+RECOMMENDATION:
+- Exempt banking/NBFC from M-Score and CCR entirely (current approach correct)
+- Add banking-specific checks if data available: PCR >= 70%, GNPA < 3%,
+  NPA divergence = 0, ROA > 0.8%
+- Note: most of this data requires RBI/BSE filings, not yfinance
+
+Sources: Marcellus Kings of Capital, Groww, Zerodha Varsity, KPMG India
+
+---
+
+S5: Promoter Pledge — Absolute vs Percentage
+KEY FINDINGS:
+- SEBI flags at 20% of total capital or 50% of promoter holding
+- Our 5% threshold is CONSERVATIVE (good for safety)
+- Forced selling is driven by ABSOLUTE RUPEE VALUE, not percentage
+- Vicious cycle: price drop → margin call → forced selling → more price drop
+- Zee: promoters lost entire holding to lenders (0.89% remaining)
+- DHFL: funds diverted through fake accounts
+- 2025: promoters sold shares worth Rs. 1.38 TRILLION through secondary market
+
+ABSOLUTE VALUE CHECK:
+- Pledged value = (Promoter Holding % x Pledge %) x Market Cap
+- Flag if pledged value > 10% of free float market cap
+- The LOAN amount (LTV ratio) is NOT publicly disclosed — pledged share
+  value is the best available proxy
+
+RECOMMENDATION:
+- Keep current 5% percentage gate + 2pp delta gate
+- Add absolute value check: flag if pledged_value > 10% of free_float_mcap
+- Add 4-quarter trend check: increasing pledge over 4 consecutive quarters
+  is a stronger red flag than static high percentage
+- Challenge: absolute value requires market cap data (available from yfinance)
+
+Sources: Kotak Securities, FYERS, SAGE Journals, Cyril Amarchand
+
+================================================================================
+STAGE 1B: LIQUIDITY & LEVERAGE
+================================================================================
+
+S5: Amihud Ratio vs Raw ADT
+KEY FINDINGS:
+- Amihud ILLIQ is academically superior but has inherent SIZE BIAS
+  (smaller stocks appear more illiquid automatically)
+- NSE uses its own "Impact Cost" metric for index construction
+- For ₹15 lakh positions at 2% participation rate: need >= 7.5 crore ADT
+- India is 3.25x less liquid than US per Amihud ratio
+- NSE F&O eligibility: >= 10 crore ADT
+
+ADT THRESHOLD ANALYSIS:
+| Participation Rate | Required Min ADT |
+|----|----|
+| 1% of ADT          | 15 crore         |
+| 2% of ADT          | 7.5 crore        |
+| 5% of ADT          | 3 crore          |
+
+RECOMMENDATION:
+- Keep ADT as primary gate (simpler, more actionable)
+- Our 10 crore threshold is appropriate — matches F&O eligibility
+- Amihud adds complexity without proportional benefit for NSE 500
+- Consider NSE impact cost data as free alternative supplementary check
+
+Sources: Amihud (2002), NSE India, PLOS ONE, NSE Indices Methodology
+
+---
+
+S6: EBIT/Interest Coverage Ratio
+KEY FINDINGS:
+- Buffett: EBITDA is "particularly pernicious" — use EBIT instead
+- ICR < 1.0x = Red flag (EBIT cannot cover interest)
+- ICR 2.0x = Bare minimum for stable companies
+- ICR 3.0x+ = Financially healthy
+- Indian companies averaged ICR of 5.64x in 2023
+- Economic Survey 2020-21: share of new loans to "zombie firms" (ICR < 1)
+  rose from 5% in 2007-08 to 27% in 2014-15
+
+REAL INDIAN POWER COMPANY DATA:
+| Company      | ICR (Latest) | D/E    |
+|--------------|-------------|--------|
+| NTPC         | 2.6-3.28x   | 1.31x  |
+| Power Grid   | 3.96x       | 1.41x  |
+| Adani Power  | ~10.5x      | 0.69x  |
+| Adani Enterp | 1.10x       | --     |
+
+RECOMMENDATION:
+- Add EBIT/Interest as complementary gate (NOT replacement for D/E)
+- Threshold: >= 1.5x for infra/power, >= 2.0x for all others
+- Scoring bonus for ICR >= 3.0x (healthy) and >= 5.0x (excellent)
+- This catches zombie companies that pass D/E check but can't service debt
+
+Sources: Wall Street Prep, CFI, Groww, GWC India, Federal Reserve
+
+---
+
+S7: Free Float Gate
+KEY FINDINGS:
+- SEBI mandates >= 25% public shareholding for all listed companies
+- New 2025-26 rules: mega IPOs get extended timelines (2.75% initial for
+  companies > Rs. 1 lakh crore market cap)
+- Free float and ADT measure DIFFERENT things:
+  - Free float = what % COULD trade (structural)
+  - ADT = what volume DOES trade (behavioral)
+- MSCI uses BOTH free-float-adjusted market cap AND ATVR together
+- Most NSE 500 stocks already exceed 25% MPS
+
+RECOMMENDATION:
+- Add soft gate: >= 15% free float (below SEBI 25% to catch glide-path IPOs)
+- Marginal value-add if ADT + stress test already exist
+- Cheap to implement — data from quarterly shareholding patterns
+- Primarily catches recent IPOs and edge cases
+
+Sources: NSE India, SEBI, Business Standard, ACGA
+
+---
+
+S8: Worst-5-Day Stress Test Methodology
+KEY FINDINGS:
+- Institutional standard: "Time to Liquidate" (TTL) framework
+- Normal conditions: 10-20% of ADV participation rate
+- Stressed conditions: 5% of ADV participation rate
+- IMF uses 1st percentile of net flows for worst-case calibration
+- Zero-volume day analysis: LMx (standardized zero daily volumes) is one
+  of the best liquidity proxies for emerging markets
+
+RECOMMENDED METHODOLOGY:
+1. Calculate 5th percentile daily volume over 6 months (125 trading days)
+2. Days_to_exit = Position_size / (P5_daily_volume x 10% participation)
+3. PASS: Days_to_exit <= 5 trading days
+4. FAIL: Days_to_exit > 5 trading days
+5. Zero-volume check: <= 2 zero-volume days in 6 months
+
+RECOMMENDATION:
+- Our current "worst 5 days in last 20" approach is a simplified version
+- More rigorous: use P5 volume over 6 months (not worst 5 of last 20)
+- Add zero-volume day count as supplementary check
+- Current 0.3x multiplier is reasonable but P5 approach is more principled
+
+Sources: BIS, IMF WP/17/226, Katalysys, AMF France, CSSF
+
+================================================================================
+STAGE 1C: EARNINGS GATE
+================================================================================
+
+S8: yfinance Data Reliability for Indian Stocks
+KEY FINDINGS:
+- yfinance quarterly financials for Indian stocks are UNRELIABLE
+- Multiple GitHub issues document failures for .NS tickers:
+  - Issue #825: data not returned for Indian stocks
+  - Issue #2612: "No price data found" for valid NSE/BSE symbols (Oct 2025)
+  - Issue #2605: missing fields in quarterly balance sheet (Sep 2025)
+- Root cause: yfinance is an unofficial scraper of Yahoo Finance
+- No formal study quantifies missing data rate for NSE 500
+- Pattern suggests missing data rate is MATERIALLY HIGHER than US equities
+
+RECOMMENDATION:
+- Cannot rely on yfinance quarterly_income_stmt as sole data source
+- Implement defensive checks for EMPTY DataFrames, not just missing values
+- Alternative sources: jugaad_data, nselib, direct NSE corporate filings
+- Our "missing data = pass" approach needs refinement (see S11)
+
+Sources: yfinance GitHub Issues #1345, #825, #2089, #2612, #2605
+
+---
+
+S9: YoY vs QoQ for Cyclical Sectors
+KEY FINDINGS:
+- YoY is STRONGLY PREFERRED over QoQ for cyclical sectors
+- YoY neutralizes seasonal effects automatically
+- Indian sector seasonality well-documented:
+  - Auto: weak Q2 (monsoon), strong Q3 (festivals)
+  - Cement: strong Q1 (pre-monsoon), weak Q2 (monsoon stops construction)
+  - Metals: global commodity cycle driven (variable)
+- QoQ without seasonal adjustment is ACTIVELY MISLEADING
+- TTM (trailing 12 months) normalization is BEST PRACTICE
+- Analysts recommend 8-12 quarters minimum to identify seasonal trends
+
+RECOMMENDATION:
+- Switch cyclical sectors from relaxed QoQ to YoY comparison (VALIDATED)
+- Consider TTM revenue growth as more robust than single-quarter YoY
+- Extend cyclical sector list: add Power, Infrastructure, Real Estate
+- Compare TTM revenue to same-period prior year for maximum stability
+
+Sources: Lotusdew (Medium), GWC India, NSE Market Pulse June 2025, CFI
+
+---
+
+S10: Earnings Quality Signals for 3-6M Prediction
+KEY FINDINGS:
+- Revenue acceleration: 25%+ quarterly growth with 3 consecutive quarters of
+  acceleration → 8.4% cumulative excess return at 1 year, 16.8% at 2 years
+- Operating leverage (EBITDA > Revenue growth): Nifty 50 EBITDA rose 8.5% vs
+  6.4% revenue growth in Q4FY25 — positive operating leverage signal
+- PEAD exists in India: 6% drift over 64 trading days (~3 months) for highest
+  vs lowest SUE deciles (Harshita et al. 2018, Nifty 500, 2002-2017)
+- PEAD may be stronger among mid/small-cap NSE stocks (outside top 100)
+- Multi-quarter earnings surprise patterns nearly DOUBLE Sharpe ratio
+- Revenue is the most predictable earnings component (India research)
+
+RANKED SIGNALS:
+| Rank | Signal                           | Evidence    | Data Available |
+|------|----------------------------------|-------------|----------------|
+| 1    | Revenue acceleration (3+ Qs)     | Strong      | Moderate       |
+| 2    | Operating leverage (EBITDA>Rev)   | Strong      | Moderate       |
+| 3    | Earnings surprise magnitude      | Strong US   | Needs analysts |
+| 4    | FCF vs NI divergence             | Strong      | Moderate       |
+| 5    | Multi-quarter SUE pattern        | Strong US   | Historical     |
+
+RECOMMENDATION:
+- Revenue acceleration is the most actionable signal with free data
+- Operating leverage computable from yfinance when available
+- Current price-reaction proxy captures some PEAD effect
+- For 3-6M prediction, revenue acceleration likely has stronger IC than
+  single-quarter YoY sales growth (current Stage 1C metric)
+
+Sources: Cogent Economics, SCIRP, EconStor, Wharton, NSE Market Pulse
+
+---
+
+S11: Missing Data Handling — Pass vs Fail
+KEY FINDINGS:
+- "MISSING DATA = PASS" IS NOT SAFE
+- Bryzgalova et al. (2022): missing data is NOT random — it clusters
+  cross-sectionally and over time
+- Stocks with missing values have LOWER RETURNS than counterparts
+- Survivorship bias: momentum strategy 26% CAGR (biased) vs 12.2% (unbiased)
+- Professional quant systems (FactSet): 1,500+ automated data quality checks
+- QuantConnect: if fundamental data unavailable, stock is EXCLUDED entirely
+
+THREE APPROACHES:
+| Approach    | Description                      | Risk                      |
+|-------------|----------------------------------|---------------------------|
+| Exclude     | Drop stocks with missing data    | Selection bias             |
+| Pass        | Let missing through              | Distressed companies pass  |
+| Penalize    | Assign neutral/worst quintile    | Small model risk           |
+
+RECOMMENDATION:
+- Current v0.2 "return True" for missing data is TOO LENIENT
+- Switch to "conditional pass with penalty flag" — pass but tag as
+  "data incomplete, lower confidence"
+- For FORENSIC gates (M-Score, CCR, Pledge): strict FAIL on missing data
+  is more defensible (those gates specifically screen for red flags)
+- For EARNINGS gates: conditional pass + confidence reduction is appropriate
+- Differentiate forensic gates (strict) from earnings gates (lenient)
+
+Sources: QuantPedia, QuantRocket, FactSet, QuantConnect, ScienceDirect
+
+---
+
+S12: SEBI Filing Deadlines
+KEY FINDINGS:
+- Q1/Q2/Q3 results: 45 days from quarter-end (ALL market cap tiers)
+- Q4/Annual results: 60 days from financial year-end
+- Top 100/250/500 classification drives GOVERNANCE, not filing speed
+- Maximum data staleness: ~4.5 months (Q1 filed Aug 14, used until Nov 14)
+- SEBI requires disclosure of reasons for delay within 1 working day
+- For NSE 500: virtually all should file within 45 days due to penalty risk
+- Missing data at 60-day mark is more likely yfinance gap than filing gap
+
+STALENESS BY QUARTER:
+| Quarter End | Filing Deadline | Max Staleness     |
+|-------------|-----------------|-------------------|
+| Jun 30 (Q1) | Aug 14          | ~4.5 months by Q2 |
+| Sep 30 (Q2) | Nov 14          | ~4.5 months by Q3 |
+| Dec 31 (Q3) | Feb 14          | ~4.5 months by Q4 |
+| Mar 31 (Q4) | May 30          | ~4.5 months by Q1 |
+
+RECOMMENDATION:
+- Add timestamp check: flag stocks where data > 60 days past quarter-end
+- Missing Q3 data in March (3+ months late) = legitimate RED FLAG
+- Data refresh window: ~6 weeks after each quarter-end
+- For NSE 500, missing data at 60-day mark = likely yfinance gap, not filing
+
+Sources: LODR Regulation 33, Lexplosion, TeamLease RegTech, NSE, SEBI
+
+================================================================================
+STAGE 2: MULTI-FACTOR RANKING
+================================================================================
+
+S11: Mansfield RS Optimal Lookback
+KEY FINDINGS:
+- Post-2008: 3-6 month lookback outperforms 12-month (evolution)
+- 100-day (~5 month) lookback strongest across multi-asset universe
+- SKIP-MONTH: excluding most recent month consistently improves Sharpe
+  (1.16 vs 1.12) due to short-term reversal effect
+- Backtesting S&P 500 (2015-2025): 6-month lookback, top 10% → 702% return
+- Multi-horizon ensemble is most robust (avoids over-optimizing)
+- Our 65/91/126-day lookbacks fall within documented momentum sweet spot
+- India-specific: Nigam & Pandey (2023), Kumar & Gupta (2008) confirm
+
+RECOMMENDATION:
+- Consider composite blending 63-day and 126-day windows
+- ADD skip-month (exclude most recent month from calculation)
+- Current equal-weight across 3 horizons is acceptable
+- Periodic recalibration as optimal lookback is NOT static
+
+Sources: Seeking Alpha, ReSolve, Alpha Architect, SAGE, Stage Analysis
+
+---
+
+S12: Delivery Volume Percentage
+KEY FINDINGS:
+- PRACTITIONER CONSENSUS IS STRONG, ACADEMIC EVIDENCE IS THIN
+- NSE states higher delivery-to-traded ratio indicates buyer confidence
+- NO peer-reviewed study found quantifying delivery % as standalone
+  forward-return predictor
+- Delivery % can be manipulated in low-volume/small-cap stocks
+- F&O stocks have structurally lower delivery % due to speculative trading
+- Works best as ONE signal combined with others, not standalone
+
+RECOMMENDATION:
+- Keep at 10% weight (current — appropriate given weak evidence)
+- Use rolling Z-score of delivery % relative to STOCK'S OWN HISTORY
+  rather than cross-sectional comparison (base rates vary greatly)
+- The AI/ML research (NotebookLM) found NO volume features used in any
+  ML model — purely price-based features dominate
+
+Sources: NSE India, ScienceDirect, StockManiacs
+
+---
+
+S13: VAM Normalization
+KEY FINDINGS:
+- Standard pipeline: compute raw momentum → divide by volatility →
+  cross-sectional z-score → winsorize at +/-3 sigma
+- BSE Momentum Index: winsorize at +/-3 sigma, then
+  score = 1 + z if positive, 1/(1-z) if negative
+- LOW-VOLATILITY PROBLEM: dividing by tiny sigma creates extreme scores
+- Solution: set minimum volatility FLOOR (e.g., 5th percentile of
+  cross-sectional volatility)
+- Van Zundert (SSRN): incorporates ex-ante volatility estimates
+- Cross-sectional normalization is most common approach
+
+RECOMMENDATION:
+- Add skip-month (exclude most recent month — same as MRS)
+- Divide raw 12-1 month return by 252-day realized volatility
+- Cross-sectional z-score normalization
+- Winsorize at +/-3.0
+- Set minimum volatility floor at 5th percentile of cross-sectional vol
+- This prevents utilities from getting artificially high VAM scores
+
+Sources: Newfound Research, Van Zundert (SSRN), BSE Factor Indices
+
+---
+
+S14: PEAD in Indian Markets
+KEY FINDINGS:
+- PEAD DEFINITIVELY EXISTS IN INDIAN MARKETS
+- Harshita et al. (2018): 6% drift over 64 trading days (~3 months)
+  for highest vs lowest SUE deciles (Nifty 500, 2002-2017)
+- Robust after controlling for beta, market cap, P/B, illiquidity
+- Comparable to Canada (~6%), larger than China (~4.11%)
+- Price adjustments take multiple months or even quarters
+- 25-30% of drift concentrated around subsequent quarterly announcements
+- India's 6% drift magnitude suggests LESS arbitrage activity than developed
+  markets — more exploitable
+
+RECOMMENDATION:
+- Our price-reaction proxy for Earnings Revision is VALIDATED
+- PEAD at 6% over 64 days fully covers 3-6 month prediction horizon
+- 20% Revision Breadth weight is JUSTIFIED
+- Consider requiring volume confirmation on big-move days (vol > 1.5x avg)
+- Extend lookback from 90 to 120 days to capture 2 quarterly results
+
+Sources: SCIRP (Harshita et al. 2018), EconStor, QuantPedia
+
+---
+
+S15: Percentile Ranking — Small Universe (30-40 Stocks)
+KEY FINDINGS:
+- 35 stocks: each percentile rank moves in ~3.3% increments (coarse)
+- Percentile ranks become unstable below 20-30 observations
+- Z-scores ASSUME NORMALITY — problematic for skewed distributions
+- Percentiles are NON-PARAMETRIC and ROBUST to outliers
+- Multi-factor regression minimum: n >= k + 30 = 35 for 5 factors
+  (our system is at the MINIMUM viable sample size)
+- S&P DJI Multi-Factor Index uses percentile ranks within universe
+
+HYBRID APPROACH RECOMMENDED:
+- Use rank/N (rank divided by universe size) as continuous [0,1] score
+- Winsorize extreme factor values before ranking
+- Or: rank-normalize first, then z-score the ranks (most robust)
+- The system should NOT filter further before scoring (already at minimum)
+
+Sources: Pomona College, Medium, FasterCapital, PMC, S&P Global
+
+---
+
+S16: Regime Scalar — Sizing vs Confidence
+KEY FINDINGS:
+- CONSENSUS: regime scalar should adjust EXPOSURE, not RANKING
+- Regime detection scales total portfolio exposure up/down
+- Individual stock ranking/selection should remain regime-agnostic
+  (or use regime-specific factor weights — a different mechanism)
+- Momentum crashes documented: >-90% drawdown in 2008 for equity momentum
+- HMM-based regime strategies: Sharpe 1.22 vs benchmarks, max drawdown
+  19.54% vs 55.19% for buy-and-hold (65% reduction)
+- Best practice combines BOTH: regime for portfolio-level exposure +
+  signal-confidence for individual position sizing
+
+RECOMMENDATION:
+- Apply regime scalar (0.1 in BEAR) to POSITION SIZE only, not to
+  confidence score used for ranking
+- Keep regime-dependent factor weights as a SEPARATE mechanism
+- This preserves ranking quality while reducing total exposure
+- Already validated by NotebookLM research (Buffett/Damodaran)
+
+Sources: arXiv, Medium (HMM), QuantifiedStrategies, Polinate Trading
+
+---
+
+S17: MRS-VAM Factor Correlation (0.64 Spearman)
+KEY FINDINGS:
+- 0.64 correlation = 41% shared variance (0.64^2)
+- Three approaches:
+  1. ORTHOGONALIZE: regress VAM on MRS, use residual (removes shared variance)
+     - Pitfall: order-dependent (arbitrary which factor "keeps" shared info)
+  2. REDUCE COMBINED WEIGHT: cap total momentum allocation
+  3. PCA COMPRESSION: extract PC1 as single "composite momentum" factor
+- Two Sigma's Venn: does NOT residualize equity style factors like Momentum
+- Robeco: uses residualization to correct stock returns for style factors
+- NBER: stock momentum may just aggregate autocorrelations in other factors
+- Quality-momentum correlation is low (~0.29) — good diversification
+
+RECOMMENDATION:
+- SIMPLEST APPROACH: compute single composite momentum score
+  (e.g., average of normalized MRS and normalized VAM) with single weight
+- ALTERNATIVE: residualize VAM against MRS (isolate volatility-adjustment
+  component), keep both but with reduced total weight
+- If keeping both: reduce combined weight from 55% to 40-45%
+- Replace freed-up weight with less-correlated factor (value, quality gate)
+
+Sources: ResearchGate, Two Sigma Venn, AQR, NBER, Robeco, Research Affiliates
+
+---
+
+S18: Forensic Quality Factor — Negative IC
+KEY FINDINGS:
+- QMJ (Asness et al. 2014): produced 4.7% annual premium, Sharpe 0.50
+- BUT: when quality is EXPENSIVE (high price of quality), future QMJ
+  returns are LOWER — essentially negative predictive IC
+- Quality and value are NEGATIVELY correlated (-0.588 daily since 2010)
+- Pure quality strategies carry embedded negative value exposure
+- Not all quality metrics create return premiums — profitability and
+  accounting quality do, but earnings stability and growth do NOT
+- Forensic quality (M-Score, CCR) should be a GATE not a RANKING FACTOR
+  — its purpose is to remove manipulators, not rank return potential
+- Key insight: forensic quality should have zero or slightly positive IC
+  as a FILTER but negative IC if used as CONTINUOUS RANKING FACTOR
+
+RECOMMENDATION:
+- Remove FQ from Stage 2 composite scoring (CONFIRMED by both NotebookLM
+  and browser research)
+- Keep FQ as binary gate in Stage 1A (pass/fail only)
+- Reallocate FQ's 15% weight to other factors
+- If adding quality signal, pair with value (QARP approach) to offset
+  embedded negative value exposure
+- Our IC backtest confirmed: FQ IC_3m = -0.17, IC_6m = -0.23
+
+Sources: Asness et al. (QMJ), Alpha Architect, MSCI, NBIM, Risk.net
+
+================================================================================
+STAGE 3: REGIME, EXITS, PORTFOLIO
+================================================================================
+
+S19: VIX Confirmation Period
+KEY FINDINGS:
+- Single-day VIX spikes cause regime whipsaw — well-documented problem
+- 5-day SMA of India VIX crossing 15-day SMA is a robust confirmation
+- Alternatively: 3-day confirmation period (require VIX > threshold
+  for 3 consecutive days before switching regime)
+- Asymmetric transitions recommended: HARDER to exit BEAR than enter it
+  (once in BEAR, require more evidence to return to normal)
+- Production TAA systems use moving average crossover for regime detection
+
+RECOMMENDATION:
+- Add 3-day confirmation period for BEAR entry
+- Use 5-day MA of VIX instead of spot VIX for threshold comparison
+- Asymmetric: require 5 days below threshold to exit BEAR (vs 3 to enter)
+- This prevents single-day geopolitical spikes from flipping portfolio
+
+Sources: Multiple TAA strategy papers
+
+---
+
+S20: ATR Stop Multiplier (2x vs 2.5-3.5x)
+KEY FINDINGS:
+- CONSENSUS: 2x ATR is TOO TIGHT for 3-6 month holding period
+- Standard recommendation for position trading: 2.5-3.5x ATR
+- Regime-adaptive stops recommended:
+  - BULL: 3x ATR (give positions room to breathe)
+  - DIP: 2.5x ATR
+  - BEAR: 2x ATR (tighter, capital preservation)
+
+RECOMMENDATION:
+- Upgrade base ATR stop from 2.0x to 3.0x
+- Make regime-adaptive: BULL=3.0x, DIP=2.5x, SIDEWAYS=2.5x, BEAR=2.0x
+- Current VIX-adaptive tightening (1.4x when VIX > 20) is reasonable but
+  should apply RELATIVE to the regime-adjusted base (not from fixed 2.0x)
+- Consider trailing stop: breakeven at +1x ATR, trail at -1.5x ATR after +2x
+
+Sources: Multiple ATR stop optimization studies
+
+---
+
+S21: Time Stop (26 Weeks vs Shorter)
+KEY FINDINGS:
+- Momentum return decay is well-documented
+- Returns decay significantly after 12-16 weeks
+- 26 weeks is at the UPPER BOUND of optimal
+- 20 weeks captures most alpha before significant decay
+- 13 weeks in high VIX (already implemented) is appropriate
+
+RECOMMENDATION:
+- Reduce default time stop from 26 weeks to 20 weeks
+- Keep 13-week override in high VIX (already implemented)
+- 20 weeks captures peak momentum while freeing capital for redeployment
+- This aligns with the 3-6 month prediction horizon more tightly
+
+Sources: Momentum decay academic literature
+
+---
+
+S22: Portfolio Beta Cap — Dynamic vs Fixed
+KEY FINDINGS:
+- Regime-adaptive beta cap recommended:
+  - BULL: 1.3 (current)
+  - DIP: 1.1
+  - SIDEWAYS: 1.0
+  - BEAR: 0.9
+- EWMA beta with 63-day half-life is more responsive than 252-day flat
+- max(EWMA_beta, flat_beta) for conservative estimate
+
+RECOMMENDATION:
+- Make beta cap regime-dependent
+- Switch beta calculation to 63-day EWMA half-life
+- Use max(EWMA, flat) for conservative beta estimate
+- In BEAR with 0.9 cap, most high-beta stocks naturally excluded
+
+Sources: EWMA beta methodology, portfolio risk papers
+
+---
+
+S23: Bearish Stock Prediction Signals
+KEY FINDINGS:
+- Technical breakdown (below 200 DMA + negative RS) is STRONGEST
+  short-term decline predictor
+- Fundamental deterioration (revenue decline + margin compression)
+  drives MEDIUM-TERM (3-6 month) declines
+- Altman Z-Score < 1.8 alongside M-Score: combined signal = 862 bps/yr
+  underperformance (vs 207 bps for M-Score alone)
+- Our 4-component model is validated but weights need adjustment
+
+RECOMMENDATION:
+- Add Altman Z-Score < 1.8 as additional bearish gate (strengthens signal)
+- Increase Fundamental Deterioration weight for 3-6M prediction horizon
+- Keep Technical Weakness as confirming signal (validates current decline)
+- Bearish scoring should emphasize "business reality getting priced in"
+  over short-term technical patterns
+
+Sources: Altman Z-Score research, short-selling signal literature
+
+---
+
+S24: Valuation Excess — Sector-Relative P/E Mean Reversion
+KEY FINDINGS:
+- Full valuation mean reversion cycle: ~30 months (TOO SLOW as standalone)
+- BUT: excellent as CONFIRMING FACTOR when combined with other bearish signals
+- Use sector-relative P/E percentile rank (not absolute P/E)
+- More predictive in BEAR/DIP regimes (when market reprices risk)
+- P/E expansion beyond 2 standard deviations of sector mean = strong bearish
+
+RECOMMENDATION:
+- Add valuation excess as bearish SCORING component (not hard gate)
+- Weight: 5-10% of bearish composite score
+- Use sector-relative P/E (or EV/EBIT) percentile rank
+- Mean reversion too slow for standalone signal but excellent confirmation
+
+Sources: Valuation ratio mean reversion academic studies
+
+---
+
+S25: Production Best Practices
+KEY FINDINGS:
+- Add health dashboard for monitoring pipeline metrics
+- Implement rollback logic for failed runs
+- Add rolling IC monitoring (track whether factor weights remain optimal)
+- System health alerting for pipeline failures
+
+RECOMMENDATION:
+- These are nice-to-have for v0.21, not critical path
+- Priority: IC monitoring (detect factor decay early)
+
+---
+
+S26: Sector Classification
+KEY FINDINGS:
+- NSE/SEBI uses official 22-sector classification (July 2023)
+- Mapping inconsistencies between NSE sectors and yfinance sectors
+- Build mapping table from official SEBI PDF
+
+RECOMMENDATION:
+- Create sector_map.py with official NSE→internal name mapping
+- Standardize sector names across all pipeline modules
+- Not critical for v0.21 functionality but reduces bugs
+
+Sources: NSE India sector classification
+
+================================================================================
+CROSS-CUTTING SYNTHESIS: ACTIONABLE CHANGES
+================================================================================
+
+PRIORITY 1 (HIGH IMPACT):
+1. Remove FQ from Stage 2 ranking → gate only (confirmed by both research streams)
+2. Fix M-Score threshold mismatch: -2.22 is for 5-var, our 8-var should use -1.78
+3. Regime scalar to SIZING not RANKING (confirmed)
+4. Upgrade ATR stop: 2.0x → 3.0x base, regime-adaptive
+5. MRS-VAM: combine into composite or residualize (0.64 correlation = 41% shared)
+
+PRIORITY 2 (MEDIUM IMPACT):
+6. Add EBIT/Interest coverage gate: >= 1.5x (infra/power), >= 2.0x (others)
+7. Add VIX 3-day confirmation period for regime switching
+8. Switch cyclicals to TTM/YoY comparison (validated)
+9. Missing data = conditional pass with confidence penalty (not blanket pass)
+10. Reduce time stop: 26 weeks → 20 weeks
+
+PRIORITY 3 (LOW IMPACT — CONSIDER FOR FUTURE):
+11. Extend CCR to cumulative 6-year if data supports
+12. Add TATA monitoring (> 0.025 flag, > 0.031 red flag)
+13. Dynamic beta cap by regime
+14. Add delivery % stock-relative z-score
+15. Add Altman Z-Score to bearish model
+16. Add skip-month to MRS/VAM calculations
+17. Sector name standardization

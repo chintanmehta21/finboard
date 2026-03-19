@@ -1,0 +1,53 @@
+symbol,has_ohlcv,ohlcv_len,has_fundamentals,stage_1a_pass,stage_1a_fail_reason,stage_1b_pass,stage_1b_fail_reason
+TCS,True,364,True,True,,True,
+INFY,True,364,True,True,,True,
+WIPRO,True,364,True,True,,True,
+HCLTECH,True,364,True,False,m_score=nan; ccr=0.04,False,skipped_1a_fail
+TECHM,True,364,True,False,m_score=nan; ccr=-1.00,False,skipped_1a_fail
+LTIM,True,363,True,True,,True,
+HDFCBANK,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+ICICIBANK,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+SBIN,True,364,True,False,m_score=nan; ccr=-1.00,False,skipped_1a_fail
+KOTAKBANK,True,364,True,False,m_score=nan; ccr=-1.00,False,skipped_1a_fail
+AXISBANK,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+INDUSINDBK,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+MARUTI,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+TATAMOTORS,False,0,True,False,insufficient_ohlcv,False,skipped_no_1a
+M&M,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+BAJAJ-AUTO,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+HEROMOTOCO,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+SUNPHARMA,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+DRREDDY,True,364,True,True,,True,
+CIPLA,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+DIVISLAB,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+BIOCON,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+RELIANCE,True,364,True,False,m_score=nan; ccr=-1.00,False,skipped_1a_fail
+ONGC,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+NTPC,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+POWERGRID,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+ADANIGREEN,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+HINDUNILVR,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+ITC,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+NESTLEIND,True,364,True,False,ccr=-1.00,False,skipped_1a_fail
+BRITANNIA,True,364,True,True,,True,
+DABUR,True,364,True,True,,True,
+TATASTEEL,True,364,True,True,,True,
+HINDALCO,True,364,True,True,,True,
+JSWSTEEL,True,364,True,True,,True,
+VEDL,True,364,True,True,,True,
+COALINDIA,True,364,True,True,,True,
+BAJFINANCE,True,364,True,True,,True,
+BAJAJFINSV,True,364,True,False,ccr=0.46,False,skipped_1a_fail
+SBILIFE,True,364,True,True,,True,
+HDFCLIFE,True,364,True,False,ccr=0.37,False,skipped_1a_fail
+ICICIPRULI,True,364,True,False,ccr=0.31,False,skipped_1a_fail
+ULTRACEMCO,True,364,True,True,,True,
+GRASIM,True,364,True,False,ccr=0.34,False,skipped_1a_fail
+ADANIENT,True,364,True,True,,True,
+LT,True,364,True,True,,True,
+GODREJPROP,True,364,True,True,,True,
+TITAN,True,364,True,True,,True,
+ASIANPAINT,True,364,True,True,,True,
+PIDILITIND,True,364,True,True,,True,
+HAVELLS,True,364,True,True,,True,
+TRENT,True,364,True,True,,True,
