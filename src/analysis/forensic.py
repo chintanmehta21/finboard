@@ -161,19 +161,42 @@ def cash_conversion_ratio(f: dict) -> float:
     return cfo / ebitda
 
 
-def forensic_pass(f: dict, pledge_data: dict = None, sector: str = '') -> bool:
+def forensic_hard_pass(f: dict, pledge_data: dict = None) -> bool:
     """
-    Run all Stage 1A forensic checks.
+    v0.22: HARD forensic gates only — M-Score + Pledge.
 
-    Returns True only if the stock passes ALL forensic gates.
+    CCR moved to SOFT scoring (Buffett: EBITDA is flawed metric).
+    Only called when fundamentals data is available (f is not None).
 
-    Args:
-        f: Fundamentals dict
-        pledge_data: Promoter pledge info dict
-        sector: Sector name for CCR exemption (Banking, Finance, etc.)
+    Returns True if stock passes the non-negotiable integrity checks.
     """
     if not f:
-        return False  # Missing fundamentals = excluded (conservative fail-safe)
+        return True  # v0.22: No data = pass (caller handles data availability)
+
+    # HARD gate 1: Beneish M-Score — "one cockroach in kitchen" (Buffett)
+    m_score = beneish_m_score(f)
+    if m_score > M_SCORE_THRESHOLD:
+        return False
+
+    # HARD gate 2: Promoter pledging — "never succeeded with a bad person" (Buffett)
+    if pledge_data and pledge_data.get('data_available'):
+        if pledge_data['pledge_pct'] > PLEDGE_MAX_PCT:
+            return False
+        if pledge_data['pledge_delta_1q'] > PLEDGE_MAX_DELTA:
+            return False
+
+    return True
+
+
+def forensic_pass(f: dict, pledge_data: dict = None, sector: str = '') -> bool:
+    """
+    Run all Stage 1A forensic checks (legacy — includes CCR as hard gate).
+
+    Kept for backward compatibility with bearish.py.
+    For the main pipeline, use forensic_hard_pass() instead.
+    """
+    if not f:
+        return False
 
     # Check 1: Beneish M-Score
     m_score = beneish_m_score(f)

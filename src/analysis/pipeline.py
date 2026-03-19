@@ -32,7 +32,7 @@ from datetime import date
 import pandas as pd
 import numpy as np
 
-from .forensic import forensic_pass, forensic_quality_score, beneish_m_score, cash_conversion_ratio
+from .forensic import forensic_hard_pass, forensic_pass, forensic_quality_score, beneish_m_score, cash_conversion_ratio
 from .factors import mansfield_rs, delivery_conviction, volatility_adjusted_momentum, earnings_revision_proxy
 from .regime import get_regime, get_macro_snapshot
 from .bearish import bearish_candidates, bullish_candidates as bear_bullish_candidates
@@ -140,21 +140,24 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
         if has_fundamentals:
             stats['has_fundamentals'] += 1
 
-            # HARD gates (only applied when data EXISTS)
-            # M-Score: "one cockroach in kitchen" — Buffett (NLM Q3)
+            # HARD gates: M-Score + Pledge only (v0.22 — CCR moved to SOFT)
             pledge = pledge_data.get(symbol, {})
-            if not forensic_pass(f, pledge, sector=sym_sector):
+            if not forensic_hard_pass(f, pledge):
                 continue
 
-            # SOFT checks: D/E and earnings — reduce confidence, don't exclude
+            # SOFT checks: D/E, CCR, earnings — flag but don't exclude
             de_cap = SECTOR_DE_CAPS.get(sym_sector, MAX_DEBT_EQUITY)
             de_ratio = f.get('debt_equity', 0) or 0
             if de_ratio > de_cap:
-                # v0.22: D/E is now SOFT — flag but don't exclude
+                forensic_clean = False
+
+            # CCR is now SOFT (v0.22 — Buffett: EBITDA is flawed metric)
+            ccr_val = cash_conversion_ratio(f)
+            ccr_exempt = sym_sector in {'Banking', 'Finance', 'Insurance', 'NBFC'}
+            if not ccr_exempt and ccr_val != -1.0 and ccr_val < 0.80:
                 forensic_clean = False
 
             if not _passes_earnings_gate(f, sym_sector):
-                # v0.22: Earnings gate is now SOFT — flag but don't exclude
                 forensic_clean = False
         # else: No fundamentals — PASS THROUGH (missing data ≠ red flag)
 
@@ -182,7 +185,9 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
         ret_3m = (ohlcv['close'].iloc[-1] / ohlcv['close'].iloc[-63] - 1) * 100 if len(ohlcv) >= 63 else 0
 
         # Count available factors for confidence multiplier
-        n_factors = sum(1 for v in [mrs, deliv, vam, rev] if v != 0.0)
+        # Use abs() > 1e-9 to distinguish "computed as ~zero" from "truly unavailable"
+        # Factor functions return exactly 0.0 for data-unavailable cases
+        n_factors = sum(1 for v in [mrs, deliv, vam, rev] if abs(v) > 1e-9)
         n_factors = max(n_factors, 1)  # At least 1
 
         records.append({
@@ -237,8 +242,10 @@ def run_full_pipeline(ohlcv_data: dict[str, pd.DataFrame],
         # Formula: (n_available / n_total) ^ 0.5
         df['data_confidence'] = (df['n_factors'] / 4.0) ** 0.5
 
-        # v0.22: Apply confidence multiplier
-        df['adj_confidence'] = df['confidence'] * df['data_confidence']
+        # v0.22: Apply confidence multiplier + forensic penalty
+        # forensic_clean=False means D/E, CCR, or earnings flagged → 0.90x penalty
+        df['forensic_penalty'] = df['forensic_clean'].map({True: 1.0, False: 0.90})
+        df['adj_confidence'] = df['confidence'] * df['data_confidence'] * df['forensic_penalty']
 
         # Select top bullish candidates
         bullish = df.nlargest(15, 'adj_confidence').head(10).copy()
@@ -364,19 +371,3 @@ def _extract_fii_data(regime_data: dict) -> dict:
     return fii_data
 
 
-def _empty_result(regime_name, regime_scalar, regime_data):
-    """Return empty pipeline result when no stocks qualify."""
-    return {
-        'bullish': pd.DataFrame(),
-        'bearish': pd.DataFrame(),
-        'regime_name': regime_name,
-        'regime_scalar': regime_scalar,
-        'macro_snapshot': get_macro_snapshot(
-            regime_data.get('nifty_df', pd.DataFrame()),
-            regime_data.get('vix_df', pd.DataFrame()),
-            regime_data.get('usdinr_df', pd.DataFrame()),
-            {}
-        ),
-        'pipeline_stats': {'total_universe': 0, 'date': date.today().isoformat()},
-        'factor_weights': {},
-    }
