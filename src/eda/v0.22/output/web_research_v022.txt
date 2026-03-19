@@ -1,0 +1,515 @@
+================================================================================
+WEB RESEARCH REPORT — v0.22 Pipeline Optimization
+Date: 2026-03-19
+Sources: Academic papers, QuantPedia, Portfolio123, AlphaArchitect, NSE Indices,
+         Schwab, Capitalmind, ResearchGate, GMT Research, various quant blogs
+================================================================================
+
+========================================================================
+TOPIC 1: MULTI-STAGE SCREENING PIPELINE — OPTIMAL FILTER SEQUENCE
+========================================================================
+
+KEY FINDING:
+The consensus across practitioner and academic sources is a 3-layer funnel:
+  1. Liquidity/Investability gates (cheapest to compute, highest kill rate)
+  2. Fundamental quality gates (moderate kill rate, removes garbage)
+  3. Technical/Momentum ranking (fine selection from quality universe)
+
+This matches our current pipeline order (1A Forensic -> 1B Liquidity -> 1C Earnings
+-> 2 Factor Ranking -> 3 Regime Overlay). However, the evidence suggests LIQUIDITY
+should come BEFORE forensic gates, not after, because:
+  - Liquidity filters are the cheapest to compute (just price/volume data)
+  - They eliminate the most stocks immediately (often 40-60% of universe)
+  - No point computing M-Score for a stock that trades INR 5 Cr/day
+  - Schwab example: 2,800 -> 814 (71% kill) on first fundamental pass
+
+EVIDENCE:
+  - Schwab: "Price and market cap is a good place to start — it allows you
+    to eliminate a lot of stocks right away" [schwab.com]
+  - FactSet: 4-8 stages work best for funnel visualization; order matters;
+    stage values should represent a logical progression [babson.edu/FactSet]
+  - Capitalmind: "Adding 200-DMA to 'stay safe' makes the backtest prettier
+    but each filter makes live performance worse. Simpler screeners
+    consistently beat complex ones." [capitalmind.in]
+  - PythonInvest: Fundamental screening narrows first, then technical
+    screeners applied to manageable list of 5-6 candidates [pythoninvest.com]
+
+OPTIMAL KILL RATES PER STAGE (for 500 -> 10 pipeline):
+  Target: 500 -> ~250 -> ~80 -> ~40 -> 10 (ranked)
+  - Stage 1 (Liquidity):    ~50% kill (250 remaining) — ADT, basic tradability
+  - Stage 2 (Fundamental):  ~65% kill (80 remaining) — M-Score, D/E, earnings
+  - Stage 3 (Ranking):      Select top 10-20 from ~80 via multi-factor scoring
+  - Stage 4 (Regime):       Exposure adjustment, not further filtering
+
+  Our current pipeline: [500] -> 51 -> 41 -> 39 -> 32 -> 10
+  This is 90% kill in Stage 1A (forensic) which is aggressive. Consider
+  whether liquidity pre-filter would reduce unnecessary M-Score computations.
+
+PRACTICAL RECOMMENDATION FOR OUR SYSTEM:
+  - Consider adding a "Stage 0" liquidity pre-filter BEFORE forensic gates
+  - Move ADT check from Stage 1B to a new Stage 0
+  - This reduces the number of M-Score computations by ~40-50%
+  - Current order is defensible but computationally suboptimal
+  - Keep total stages at 4-5 (research says 4-8 optimal)
+
+
+========================================================================
+TOPIC 2: HANDLING MISSING FUNDAMENTAL DATA
+========================================================================
+
+KEY FINDING:
+Professional quant funds use a hierarchy of approaches, and the surprising
+finding from recent academic research is that simple cross-sectional mean
+imputation performs nearly as well as sophisticated methods.
+
+EVIDENCE:
+  - Bryzgalova, Lerner, Lettau & Pelger (2022, NBER Working Paper 30761):
+    "Missing financial data affects over 70% of firms representing about
+    half of total market cap. Firm fundamentals are NOT missing-at-random,
+    invalidating traditional ad-hoc approaches." [nber.org]
+
+  - Chen (2024, Journal of Financial Economics):
+    "Simply imputing with cross-sectional means performs well compared to
+    rigorous expectation-maximization methods" due to three facts:
+    (1) missingness occurs in large blocks organized by time
+    (2) cross-sectional correlations are small
+    (3) missingness tends to occur in blocks by data source [sciencedirect.com]
+
+  - QuantPedia: "The most common procedure is to exclude an observation
+    altogether if any covariate is missing (complete cases analysis).
+    Alternatively, researchers impute the unconditional mean for a missing
+    characteristic." [quantpedia.com]
+
+  - MICE Framework (Springer 2019): "Imputes fundamental data by utilizing
+    the interdependency among variables complying with accounting rules,
+    using Expectation Maximization methodology." [springer.com]
+
+  - BlueChipAlgos: "Situations of missing data happen in cases of years
+    of low liquidity for small cap stocks or equity instruments in
+    emerging markets as plenty of the data is irregular." [bluechipalgos.com]
+
+HIERARCHY OF APPROACHES (from simplest to most complex):
+  1. Exclude stocks with missing data entirely (most common, loses signal)
+  2. Cross-sectional median/mean imputation (surprisingly effective)
+  3. Industry median imputation (better for sector-specific metrics)
+  4. Last-known-value carry-forward (for time-series gaps)
+  5. MICE / EM-based imputation (academic gold standard, complex)
+  6. PCA-based matrix completion (cutting edge)
+
+PRACTICAL RECOMMENDATION FOR OUR SYSTEM:
+  - Our Stage 1C "lenient on missing data" approach is CORRECT and supported
+    by research — excluding stocks with missing data biases toward large caps
+  - For missing fundamental data in scoring: use INDUSTRY MEDIAN imputation
+    rather than excluding or using zero
+  - Apply a confidence penalty (see Topic 6) when data is imputed
+  - For the NSE 500 universe, ~15-25% of mid/small caps will have patchy
+    quarterly data; excluding them loses valuable signal
+  - Current YoY fallback for cyclical sectors is a sound proxy strategy
+
+
+========================================================================
+TOPIC 3: BENEISH M-SCORE FOR INDIAN EQUITIES
+========================================================================
+
+KEY FINDING:
+The -2.22 threshold is MORE CONSERVATIVE than the standard -1.78 and is
+appropriate for our use case (gate filter, not primary signal). Indian
+studies confirm the model works for NSE-listed companies but with caveats.
+
+EVIDENCE:
+  - Beneish (1999, original): -1.78 threshold detects 76% of manipulators
+    with 17.5% false positive rate. -2.22 is the "40:1 cost ratio" cutoff
+    that reduces false positives at the expense of missing more manipulators.
+    [en.wikipedia.org/wiki/Beneish_M-score]
+
+  - Shah et al. (Indian Journal of Finance): Study of BSE 100 companies
+    (2011-2016) found 11 out of 65 companies showed manipulation signals.
+    Three ratios most significant: TATA (accruals), DSRI (receivables),
+    and SGI (sales growth). [indianjournaloffinance.co.in]
+
+  - GMT Research (Asia study 2010-2015): "33% of companies across Asia
+    recorded a Beneish M-Score greater than -2.22, although this dropped
+    to just 16% if the threshold was raised to -1.78." This means at -2.22,
+    one-third of Asian companies flag as potential manipulators — this is
+    a HIGH false positive rate for a screening gate. [gmtresearch.com]
+
+  - NSE500 study: "Indian companies with M-score above -1.78 report lower
+    returns on average in the following year." Confirms predictive value
+    for Indian equities. [abacademies.org]
+
+  - Portfolio123: The model was not designed for financial companies —
+    "sales and receivables, two main ingredients, are not used when
+    analyzing financial institutions." [portfolio123.com]
+
+  - StableBread: "-2.22 is more conservative and reduces the likelihood
+    of false positives." [stablebread.com]
+
+THRESHOLD ANALYSIS:
+  -1.78 (standard):  76% detection, 17.5% false positive rate
+  -2.22 (conservative): Lower detection (~50-60% est.), ~8-10% false positive
+
+  For a GATE FILTER (not a scoring signal), we want LOW false positives
+  (don't want to wrongly exclude good stocks). The -2.22 threshold is
+  correct for this purpose.
+
+  HOWEVER: GMT's Asia finding that 33% of companies flag at -2.22 is
+  concerning. This suggests either:
+  (a) Asian accounting standards trigger more flags (different GAAP)
+  (b) The model needs recalibration for Indian/Asian equities
+  (c) There genuinely is more earnings manipulation in the region
+
+PRACTICAL RECOMMENDATION FOR OUR SYSTEM:
+  - KEEP the -2.22 threshold — it's the right choice for a gate filter
+  - EXCLUDE financial companies from M-Score calculation (as Beneish intended)
+    — our SECTOR_DE_CAPS already handles banks differently
+  - Consider a NaN-safe implementation (v0.2 bug was NaN bypassing gate)
+  - Monitor the actual kill rate: if M-Score alone is killing >30% of
+    the universe, consider loosening to -2.50 or -2.76
+  - The 3 most predictive components for India: TATA, DSRI, SGI — could
+    weight these higher in a simplified 3-variable model
+
+
+========================================================================
+TOPIC 4: 200 DMA FILTER & MOMENTUM IN INDIAN EQUITIES
+========================================================================
+
+KEY FINDING:
+Momentum is the STRONGEST factor in Indian equities, with 20%+ CAGR over
+long periods. The 200 DMA filter is widely used but evidence suggests it
+may hurt live performance despite improving backtests.
+
+EVIDENCE:
+  - Nifty 200 Momentum 30 Index: 20.64% CAGR vs 14-15% for Nifty 50
+    over 19 years, Sharpe 0.89 vs 0.57. Uses 6-month + 12-month price
+    return adjusted for volatility. [niftyindices.com]
+
+  - Capitalmind: "The Nifty 200 Momentum 30 compounded at nearly ~20%
+    CAGR over five years." [capitalmind.in]
+
+  - Research360: "52-week high screener with volume confirmation (1.5x
+    average) and price above 200 DMA shows backtests with 18-22% CAGR."
+    [research360.in]
+
+  - CRITICAL WARNING from Capitalmind: "Adding 200-DMA to 'stay safe'
+    makes the backtest prettier but each filter makes live performance
+    worse. Simpler screeners consistently beat complex ones."
+    [capitalmind.in]
+
+  - Momentum in India study (ScienceDirect): "Relative momentum strategies
+    yield large and substantial profits in the Indian Stock Market."
+    [sciencedirect.com]
+
+  - QED Capital: "Momentum emerged as the most effective strategy,
+    delivering substantial returns and outperforming other factors."
+    [qedcap.com]
+
+  - NSE Methodology: Nifty200 Momentum 30 does NOT use 200 DMA as a
+    filter. It uses normalized momentum score = (6M return + 12M return)
+    adjusted for volatility. No price-vs-moving-average filter.
+    [niftyindices.com]
+
+200 DMA AS FIRST-STAGE FILTER:
+  Pro: Easy to compute, removes downtrending stocks, improves backtest metrics
+  Con: Adds regime-dependent whipsaw, removes mean-reversion opportunities,
+       "makes backtests prettier but hurts live performance"
+
+  The Nifty Momentum 30 index — the gold standard for Indian momentum —
+  does NOT use 200 DMA. It uses pure return-based momentum with vol adjustment.
+
+PRACTICAL RECOMMENDATION FOR OUR SYSTEM:
+  - Do NOT add 200 DMA as a hard filter gate — evidence says it hurts live
+    performance despite improving backtests
+  - Our Mansfield RS factor already captures relative momentum vs benchmark
+  - If you want a trend filter, use it as a SOFT SIGNAL in scoring (small
+    weight) rather than a binary gate
+  - The Nifty Momentum 30 methodology (6M+12M return / volatility) is
+    essentially what our VAM factor already does
+  - Momentum is confirmed as the strongest factor in India (20%+ CAGR)
+  - Our MRS weight of 35% is well-supported by evidence
+
+
+========================================================================
+TOPIC 5: 52-WEEK HIGH PROXIMITY AS MOMENTUM FACTOR
+========================================================================
+
+KEY FINDING:
+52-week high proximity is one of the MOST powerful momentum predictors,
+often SUPERIOR to traditional momentum (past returns). The seminal George
+& Hwang (2004) paper in the Journal of Finance established this conclusively.
+
+EVIDENCE:
+  - George & Hwang (2004, Journal of Finance): "Nearness to the 52-week
+    high dominates past returns in terms of predictive power and largely
+    explains momentum profits." The 52-week high measure has predictive
+    power whether or not stocks have had extreme past returns. Returns
+    forecast using 52-week high do NOT reverse in the long run (unlike
+    traditional momentum). [wiley.com, bauer.uh.edu]
+
+  - Performance: "Average monthly gain to the 52-week high momentum
+    strategy (6-month hold) was 0.45% — about twice as large as those
+    associated with other momentum strategies." More recent: 0.65%/month
+    vs 0.38% for traditional momentum. [bauer.uh.edu]
+
+  - Breakout statistics: "Stocks breaking through 52-week highs with
+    volume exceeding 150% of 20-day average continue upward 72% of
+    the time for an average gain of 11.4% over 31 trading days."
+    [pocketoption.com]
+
+  - Behavioral mechanism: Investors under-react to positive news about
+    stocks near their 52-week high due to anchoring bias. When the high
+    is finally breached, prices see further gains. [kavout.com]
+
+  - International evidence: Works across international stock markets,
+    not just US. [sciencedirect.com]
+
+  - Screening thresholds commonly used:
+    * Within 5-10% of 52-week high: aggressive momentum screen
+    * Within 20-25%: moderate momentum screen
+    * Our current system uses no explicit 52-week high filter
+
+NEARNESS RATIO (Price / 52-Week High):
+  - Ratio > 0.90 (within 10%): Strong momentum, breakout candidates
+  - Ratio > 0.75 (within 25%): Moderate momentum, in uptrend
+  - Ratio < 0.50 (>50% off high): Potential value trap or mean-reversion
+
+PRACTICAL RECOMMENDATION FOR OUR SYSTEM:
+  - Consider adding 52-week high proximity as a SUPPLEMENTARY factor or
+    as a pre-filter in Stage 1B
+  - It would complement (not replace) our Mansfield RS factor
+  - Threshold: "within 25% of 52-week high" (ratio > 0.75) is a good
+    moderate filter that our Research360 source confirms
+  - For bearish screening: ratio < 0.50 could identify short candidates
+  - This is CHEAP TO COMPUTE (just need 1 year of price data, which we
+    already have for MRS calculation)
+  - George & Hwang's finding that 52WH momentum doesn't reverse long-term
+    is important — it means it's safer than traditional momentum for our
+    3-6 month holding period
+
+
+========================================================================
+TOPIC 6: CONFIDENCE SCORING WITH PARTIAL/MISSING DATA
+========================================================================
+
+KEY FINDING:
+The research supports a "available information weighting" approach where
+composite scores are computed from observed components only, with an
+explicit confidence penalty proportional to the fraction of missing data.
+
+EVIDENCE:
+  - BMC Medical Research (2025): "Instead of imputing a missing component
+    value, that component can simply be discarded from the composite score
+    formula and the composite score derived as the average of the observed
+    components with modified weights that preserve the relations."
+    [springer.com/BMC]
+
+  - PMC Factor Score study: "Expected posterior-weighted full maximum
+    likelihood methods are significantly more reliable than sum scores
+    and regression estimators in the presence of missing data. The
+    reliability can be closely approximated by missingness-adjusted
+    communality." [pmc.ncbi.nlm.nih.gov]
+
+  - ArXiv (2025): "Score matching can be adapted to work with missing
+    data in a flexible setting where data can be partially missing over
+    any subset of the coordinates." [arxiv.org]
+
+  - ScienceDirect (ensemble methods): "Use confidence scores of base
+    learners — targeting training data for which existing base learners
+    cannot output a confident prediction." [sciencedirect.com]
+
+  - Practical quant approach: "When missing values exist in factors,
+    imputation is performed using the industry median, and when the
+    industry median is unavailable, the overall median of the stock
+    pool is applied." [sciencedirect.com]
+
+RECOMMENDED CONFIDENCE PENALTY FORMULA:
+  confidence_multiplier = (n_available / n_total) ^ alpha
+
+  Where:
+  - n_available = number of factors with actual (non-imputed) data
+  - n_total = total number of factors in the model
+  - alpha = penalty exponent (0.5 = mild, 1.0 = linear, 2.0 = harsh)
+
+  Example for our 4-factor model:
+  - All 4 factors available: (4/4)^0.5 = 1.00 (no penalty)
+  - 3 of 4 factors available: (3/4)^0.5 = 0.87 (13% penalty)
+  - 2 of 4 factors available: (2/4)^0.5 = 0.71 (29% penalty)
+  - 1 of 4 factors available: (1/4)^0.5 = 0.50 (50% penalty)
+
+  With alpha=1.0 (linear):
+  - 3/4: 0.75, 2/4: 0.50, 1/4: 0.25
+
+PRACTICAL RECOMMENDATION FOR OUR SYSTEM:
+  - Use alpha=0.5 (square root penalty) — mild but meaningful
+  - Compute composite score from available factors only (re-weighted)
+  - Multiply by confidence_multiplier
+  - Set a MINIMUM threshold: require at least 2 of 4 factors to be
+    available (50% minimum data coverage)
+  - Track confidence scores in output — useful for portfolio sizing
+    (lower confidence = smaller position)
+  - This approach is better than our current binary pass/fail on
+    missing data in Stage 1C
+
+
+========================================================================
+TOPIC 7: MINIMUM SAMPLE SIZE FOR FACTOR RANKING — PERCENTILE vs Z-SCORE
+========================================================================
+
+KEY FINDING:
+For universes of 40-80 stocks, PERCENTILE RANKING is more robust than
+z-scores. Z-scores assume normality and are sensitive to outliers, which
+is problematic with small samples of financial data.
+
+EVIDENCE:
+  - Statistical consensus: "Z-score method will NEVER detect an outlier
+    if the dataset has fewer than 12 items." For small samples, z-scores
+    behave strangely. [machinelearningplus.com]
+
+  - PMC (2025): "You should avoid using z-scores when displaying profile
+    or group differences" — z-scores can be misleading when the
+    underlying distribution is non-normal. [pmc.ncbi.nlm.nih.gov]
+
+  - Statology: "When normally distributed, any z-score can be associated
+    with a specific percentage of the population. This does not work well
+    if the data are not normally distributed." [statology.org]
+
+  - Analytics Vidhya: "Converting values to their equivalent percentile
+    rank is more robust against outliers and makes no assumptions about
+    the underlying shape of the distribution, though it requires a large
+    number of observations to be meaningful." [medium.com]
+
+  - Pomona College thesis: "Converting each metric to a z-score or
+    percentile rank normalizes data across industries." For stock ranking
+    with 50 stocks, both approaches work but percentile is more robust.
+    [pomona.edu]
+
+  - S&P Global: "To create comparable data sets, fundamental data within
+    a factor score is standardized into a z-score. Z-scores of different
+    metrics can be averaged to provide a single quality score."
+    [spglobal.com]
+
+  - Medium (Malafosse): Z-scores are sensitive to extreme outliers —
+    "if there are very large outliers in the dataset, this can skew the
+    mean." Modified z-score (using median instead of mean) is more robust.
+    [medium.com]
+
+MINIMUM SAMPLE SIZES:
+  - Z-scores: Minimum ~30 for Central Limit Theorem to apply; practically
+    need 50+ for reliable standardization of financial data
+  - Percentile ranks: Work with any sample size but become "coarse" below
+    ~20 (each stock = 5 percentile points)
+  - Modified z-scores (MAD-based): Work well down to ~15 observations
+  - For N=40-80: Both methods are usable, but percentile is safer
+
+COMPARISON FOR OUR PIPELINE (N = 32-80 after Stage 1):
+
+  Z-Score Pros:
+  - Preserves magnitude of differences (stock A is 2x better than B)
+  - Better for combining factors via weighted average
+  - S&P and MSCI use z-scores in their factor indices
+
+  Z-Score Cons:
+  - Assumes normality (financial factors are usually skewed)
+  - Single outlier can compress the rest of the distribution
+  - With N=32, a single extreme value distorts everything
+
+  Percentile Pros:
+  - Robust to outliers and non-normal distributions
+  - No distributional assumptions
+  - Uniform [0,1] output is easy to interpret and combine
+
+  Percentile Cons:
+  - Loses magnitude information (rank 1 vs rank 2 may differ by 0.1% or 10%)
+  - "Coarse" with small N (each rank = 3.1 percentile points at N=32)
+  - Can't distinguish between stocks that are very close in value
+
+HYBRID APPROACH (BEST OF BOTH):
+  1. Winsorize raw factor values at 2.5th/97.5th percentile (clip outliers)
+  2. Apply modified z-score (using median and MAD instead of mean and SD)
+  3. For the final composite, use percentile ranking of the composite score
+
+PRACTICAL RECOMMENDATION FOR OUR SYSTEM:
+  - For N=32-80 (our typical post-filter universe): use WINSORIZED Z-SCORES
+    for individual factors, then PERCENTILE RANK for the final composite
+  - Winsorize at +/- 3 sigma (we already do this for VAM — extend to all
+    factors)
+  - Modified z-score (median/MAD) is worth considering as a robustness
+    improvement, especially during BEAR regime when universe is smallest
+  - At N<20, switch to pure percentile ranking (forgo z-scores entirely)
+  - Our current approach of percentile ranking within the surviving universe
+    is sound; just ensure winsorization is applied to all factors first
+
+
+========================================================================
+SUMMARY OF ACTIONABLE RECOMMENDATIONS
+========================================================================
+
+PRIORITY 1 (High Impact, Easy Implementation):
+  [x] Keep -2.22 M-Score threshold (confirmed appropriate)
+  [x] Keep MRS at 35% weight (momentum strongest factor in India)
+  [ ] Add 52-week high proximity as supplementary filter (ratio > 0.75)
+  [ ] Add confidence penalty for missing data: (n_avail/n_total)^0.5
+  [ ] Winsorize ALL factors at +/-3 sigma (not just VAM)
+
+PRIORITY 2 (Medium Impact, Moderate Effort):
+  [ ] Consider moving ADT filter to Stage 0 (before forensic gates)
+  [ ] Exclude financials from M-Score calculation (use sector_map)
+  [ ] Implement industry median imputation for missing fundamentals
+  [ ] Use modified z-score (median/MAD) when universe < 30 stocks
+
+PRIORITY 3 (Research Items, Low Urgency):
+  [ ] Investigate India-specific M-Score recalibration (GMT found 33% flag)
+  [ ] Test 200 DMA as soft signal (not gate) — evidence is mixed
+  [ ] Consider Nifty Momentum 30 methodology (6M+12M/vol) as VAM benchmark
+  [ ] Track confidence scores for position sizing integration
+
+KEY INSIGHT: Our pipeline design is fundamentally sound. The biggest
+opportunities are: (1) adding a confidence scoring system for missing data,
+(2) incorporating 52-week high proximity, and (3) ensuring robust
+normalization via winsorization across all factors.
+
+========================================================================
+SOURCES
+========================================================================
+
+Topic 1 — Pipeline Sequence:
+  - Charles Schwab: https://www.schwab.com/learn/story/how-to-pick-stocks-using-fundamental-and-technical-analysis
+  - FactSet/Babson: https://www.babson.edu/media/babson/assets/cutler-center/FactSet_Building-an-Equity-Screen_FINAL.pdf
+  - Capitalmind: https://www.capitalmind.in/blog/nse-strategy-indices-factor-investing-basics
+  - PythonInvest: https://pythoninvest.com/long-read/stock-screening-using-paid-data
+
+Topic 2 — Missing Data:
+  - QuantPedia: https://quantpedia.com/how-to-deal-with-missing-financial-data/
+  - Chen (2024, JFE): https://www.sciencedirect.com/science/article/abs/pii/S0304405X24000382
+  - Bryzgalova et al. (2022, NBER): https://www.nber.org/system/files/working_papers/w30761/w30761.pdf
+  - Springer (MICE): https://link.springer.com/article/10.1007/s40953-018-0142-7
+
+Topic 3 — Beneish M-Score India:
+  - Wikipedia: https://en.wikipedia.org/wiki/Beneish_M-score
+  - Shah et al. (Indian Journal of Finance): https://www.indianjournaloffinance.co.in/index.php/IJF/article/view/122796
+  - GMT Research (Asia): https://www.gmtresearch.com/en/accounting-ratio/beneishs-m-score/
+  - Portfolio123: https://blog.portfolio123.com/detecting-financial-fraud-a-close-look-at-the-beneish-m-score/
+  - StableBread: https://stablebread.com/beneish-m-score/
+
+Topic 4 — 200 DMA & Momentum India:
+  - Nifty Indices: https://www.niftyindices.com/indices/equity/strategy-indices/nifty200-momentum-30
+  - Capitalmind: https://www.capitalmind.in/blog/nse-strategy-indices-factor-investing-basics
+  - Research360: https://www.research360.in/blogs/top-5-momentum-stock-screeners
+  - QED Capital: https://qedcap.com/ast/uploads/2022/03/Momentum-In-India-Sep2021.pdf
+
+Topic 5 — 52-Week High:
+  - George & Hwang (2004, JoF): https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.2004.00695.x
+  - George & Hwang (PDF): https://www.bauer.uh.edu/tgeorge/papers/gh4-paper.pdf
+  - AlphaArchitect: https://alphaarchitect.com/the-secret-to-momentum-is-the-52-week-high/
+  - Kavout: https://www.kavout.com/market-lens/mastering-the-52-week-high-momentum-strategy-a-practical-guide-for-investors
+
+Topic 6 — Confidence Scoring:
+  - BMC Medical Research: https://link.springer.com/article/10.1186/s12874-025-02515-3
+  - PMC (Factor Scores): https://pmc.ncbi.nlm.nih.gov/articles/PMC3773873/
+  - ArXiv (Score Matching): https://arxiv.org/abs/2506.00557
+
+Topic 7 — Percentile vs Z-Score:
+  - Statology: https://www.statology.org/beyond-the-z-score-decoding-what-percentiles-really-mean/
+  - PMC (Z-Score cautions): https://pmc.ncbi.nlm.nih.gov/articles/PMC12239870/
+  - S&P Global: https://www.spglobal.com/spdji/en/documents/research/research-the-merits-and-methods-of-multi-factor-investing.pdf
+  - Pomona thesis: https://pages.pomona.edu/~jsh04747/Student%20Theses/ScinFin.pdf
+  - Medium (Malafosse): https://charlesmalafosse.medium.com/z-scores-in-investing-and-finance-are-you-using-them-right-aecfb18f8984

@@ -1,0 +1,86 @@
+# NotebookLM Research Output — v0.22 Pipeline Funnel Redesign
+# Date: 2026-03-19
+# Notebook: Damodaran & Buffett Investment Research
+# URL: https://notebooklm.google.com/notebook/a0890ecf-fd13-4ff4-92b3-dfaffd6c9dbb
+
+## Q1: Damodaran on Data-Scarce Markets
+
+QUESTION: Should we use price-based signals as PRIMARY filters when fundamental data is unavailable (only 8-10% yfinance coverage), rather than excluding stocks entirely?
+
+ANSWER:
+- Damodaran advises "updating the numbers you can and making best estimates for data you lack" rather than abandoning fundamental analysis
+- Buffett would "happily forgo knowing price history" to focus on business understanding
+- ML models in notebook successfully use technical indicators (MAs, MACD, Bollinger Bands) to predict price movements, bypassing fundamental ratios entirely
+- CONCLUSION: Don't abandon fundamentals, but price-based signals are valid when data unavailable
+
+## Q2: Buffett Circle of Competence + Screening Sequence
+
+QUESTION: Restrict to 40 fundamental-covered stocks, or use price signals for 498 with fundamentals as overlay?
+
+ANSWER:
+- Buffett: "Recognize the perimeter of your circle of competence and stay well inside of it"
+- Would have NO PROBLEM excluding 92% of market — actively avoids businesses he can't evaluate
+- Size of opportunity set is "completely irrelevant"
+- BUT: ML frameworks in notebook take opposite approach — successfully predict using only technical indicators
+- Damodaran: No specific guidance on screen sequence in the notebook
+- CONCLUSION: Tension between Buffett's fundamental-only philosophy and quantitative momentum reality
+
+## Q3: Hard vs Soft Gates — Which Forensic Signals Stay Hard?
+
+QUESTION: Which of M-Score, CCR, Pledge, D/E should remain hard gates vs become soft scoring components?
+
+ANSWER (CRITICAL FOR PIPELINE DESIGN):
+
+1. **M-Score (Manipulation) → HARD GATE**
+   - Buffett: "When management takes the low road in accounting, there is seldom just one cockroach in the kitchen"
+   - False negative = permanent capital loss (Buffett's #1 rule: never risk it)
+   - False positive = error of omission (perfectly acceptable to Buffett)
+
+2. **Promoter Pledge (Governance) → HARD GATE**
+   - Buffett: "We've never succeeded in making a good deal with a bad person"
+   - Integrity is non-negotiable
+
+3. **Debt/Equity (Leverage) → SOFTEN**
+   - Damodaran: borrowing lowers cost of capital up to optimal point before becoming destructive
+   - Buffett: accepts massive debt for capital-intensive businesses if earnings cover interest
+   - Hard D/E gate creates too many false positives
+
+4. **CCR (Cash Conversion) → SOFTEN OR REPLACE**
+   - Buffett considers EBITDA "deeply flawed" — ignores real cash cost of depreciation
+   - Requiring CFO to match EBITDA unfairly penalizes capital-intensive businesses
+   - Suggestion: Use EBIT-based metric instead of EBITDA
+
+ASYMMETRY: False negatives (buying bad stocks) = catastrophic drawdowns. False positives (missing good stocks) = cost nothing. "You don't need to own every good business."
+
+## Q4: Price-Only Technical Factors
+
+QUESTION: Which additional price-based signals to add for first screening stage?
+
+ANSWER:
+- ML research in notebook supports: 7-day MA, 21-day MA, MACD, Bollinger Bands
+- XGBoost feature importance: 7-day MA, MACD, Bollinger Bands ranked most predictive
+- Notebook does NOT contain evidence for: 200 DMA, 52-week highs, volume trends, ATR, RSI
+- Suggestion: Consider PCA / Eigen portfolios for dimensionality reduction of technical signals
+- NOTE: 200 DMA and 52-week high evidence to come from browser research
+
+## Q5: Confidence Scoring with Partial Data
+
+QUESTION: Should price-only stocks get 0.85x confidence penalty vs 1.0x for full-data stocks?
+
+ANSWER (IMPORTANT NUANCE):
+- Buffett: Would assign 0.0x (total exclusion) — "buying based on price behavior is speculation"
+- Damodaran: Also anchors to fundamentals; views them as essential, not marginal
+- Both would argue fundamental data is NOT optional
+- BUT: "For a quantitative momentum system, applying a confidence penalty is standard mathematical practice to manage risk and reflect higher uncertainty"
+- CONCLUSION: Buffett/Damodaran philosophy conflicts with quant momentum approach. For our system, a confidence penalty (not total exclusion) is the pragmatic choice supported by quant finance practice.
+
+## SYNTHESIS — Key Design Decisions from NotebookLM Research
+
+1. **M-Score and Pledge: KEEP as hard gates** (but only apply to stocks WITH data)
+2. **D/E and CCR: SOFTEN to scoring components** (reduce false positives)
+3. **Missing fundamentals: NOT a hard exclusion** — use price signals + confidence penalty
+4. **Confidence penalty: ~0.85x for price-only** (quant standard, despite Buffett/Damodaran objection)
+5. **Price-only factors: Add 7-day MA, 21-day MA, MACD, Bollinger Bands** as technical indicators
+6. **200 DMA, 52-week high: Need browser research** (not in notebook)
+7. **CCR metric: Consider replacing EBITDA denominator with EBIT** (Buffett's EBITDA critique)
+8. **False negative vs false positive asymmetry: Accept more false positives** (exclude more) on integrity signals, but allow more stocks through on financial metrics
