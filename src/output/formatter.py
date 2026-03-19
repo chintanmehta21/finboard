@@ -174,6 +174,20 @@ def format_telegram_report(result: dict) -> str:
     lines.append('')
     lines.append(DIVIDER_TELEGRAM)
 
+    # Pipeline funnel stats
+    stats = result.get('pipeline_stats', {})
+    lines.append('')
+    lines.append('\U0001F50D <b>PIPELINE FUNNEL</b>')
+    lines.append(
+        f'   Universe: <b>{stats.get("total_universe", 0)}</b>'
+        f' | Stage 1A: <b>{stats.get("stage_1a_pass", 0)}</b>'
+        f' | Stage 1B: <b>{stats.get("stage_1b_pass", 0)}</b>'
+        f' | Scored: <b>{stats.get("stage_2_scored", 0)}</b>'
+    )
+
+    lines.append('')
+    lines.append(DIVIDER_TELEGRAM)
+
     # Footer — minimal
     lines.append('\u26A0\uFE0F <i>NOT financial advice</i>')
 
@@ -279,6 +293,19 @@ def format_discord_report(result: dict) -> str:
         f'FII: Rs.{macro.get("fii_net", 0):,.0f} Cr | '
         f'DII: Rs.{macro.get("dii_net", 0):,.0f} Cr'
     )
+
+    lines.append('---')
+
+    # Pipeline funnel stats
+    stats = result.get('pipeline_stats', {})
+    lines.append('\U0001F50D ## PIPELINE FUNNEL')
+    lines.append(
+        f'Universe: **{stats.get("total_universe", 0)}**'
+        f' | Stage 1A: **{stats.get("stage_1a_pass", 0)}**'
+        f' | Stage 1B: **{stats.get("stage_1b_pass", 0)}**'
+        f' | Scored: **{stats.get("stage_2_scored", 0)}**'
+    )
+
     lines.append('')
     lines.append('\u26A0\uFE0F *NOT financial advice*')
 
